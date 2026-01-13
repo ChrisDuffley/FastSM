@@ -99,8 +99,9 @@ class MastodonAccount(PlatformAccount):
         return statuses
 
     def get_notifications(self, limit: int = 40, **kwargs) -> List[UniversalNotification]:
-        """Get notifications."""
-        notifications = self.api.notifications(limit=limit, **kwargs)
+        """Get notifications (excludes mentions since they have their own timeline)."""
+        # Exclude mentions - they're shown in the mentions timeline instead
+        notifications = self.api.notifications(limit=limit, exclude_types=['mention'], **kwargs)
         result = [mastodon_notification_to_universal(n) for n in notifications if n]
         # Cache users
         for notif in result:

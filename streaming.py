@@ -49,13 +49,14 @@ class MastodonStreamListener(StreamListener):
 	def on_notification(self, notification):
 		"""Called when a new notification arrives"""
 		try:
-			# Add to notifications timeline
-			for tl in self.account.timelines:
-				if tl.type == "notifications":
-					tl.load(items=[notification])
-					break
+			# Add to notifications timeline (but not mentions - they have their own timeline)
+			if notification.type != "mention":
+				for tl in self.account.timelines:
+					if tl.type == "notifications":
+						tl.load(items=[notification])
+						break
 
-			# Also add mentions to mentions timeline as STATUS (not notification)
+			# Add mentions to mentions timeline as STATUS (not notification)
 			if notification.type == "mention" and hasattr(notification, 'status') and notification.status:
 				# Extract the status and give it the notification ID for dedup
 				status = notification.status
