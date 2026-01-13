@@ -89,7 +89,6 @@ def build_windows(script_dir: Path, output_dir: Path, temp_base: Path) -> tuple:
 
         # Show progress
         "--show-progress",
-        "--show-memory",
 
         # Main script
         str(script_dir / "FastSM.pyw"),
@@ -125,6 +124,21 @@ def build_windows(script_dir: Path, output_dir: Path, temp_base: Path) -> tuple:
                 shutil.copytree(ao2_lib_path, ao2_dst, dirs_exist_ok=True)
         except ImportError:
             print("Warning: accessible_output2 not found, skipping lib copy")
+
+        # Copy sounds folder
+        sounds_src = script_dir / "sounds"
+        if sounds_src.exists():
+            sounds_dst = dist_dir / "sounds"
+            print("Copying sounds folder...")
+            shutil.copytree(sounds_src, sounds_dst, dirs_exist_ok=True)
+
+        # Copy keymap files
+        for keymap_file in ["keymap.keymap", "keymac.keymap"]:
+            keymap_src = script_dir / keymap_file
+            if keymap_src.exists():
+                keymap_dst = dist_dir / keymap_file
+                print(f"Copying {keymap_file}...")
+                shutil.copy2(keymap_src, keymap_dst)
 
         # Create zip file for distribution
         zip_path = create_windows_zip(output_dir, dist_dir)
@@ -306,6 +320,21 @@ def build_macos(script_dir: Path, output_dir: Path, temp_base: Path) -> tuple:
         docs_dst = resources_dir / "docs"
         print("Copying docs folder...")
         shutil.copytree(docs_src, docs_dst, dirs_exist_ok=True)
+
+    # Copy sounds folder to Resources
+    sounds_src = script_dir / "sounds"
+    if sounds_src.exists():
+        sounds_dst = resources_dir / "sounds"
+        print("Copying sounds folder...")
+        shutil.copytree(sounds_src, sounds_dst, dirs_exist_ok=True)
+
+    # Copy keymap files to Resources
+    for keymap_file in ["keymap.keymap", "keymac.keymap"]:
+        keymap_src = script_dir / keymap_file
+        if keymap_src.exists():
+            keymap_dst = resources_dir / keymap_file
+            print(f"Copying {keymap_file}...")
+            shutil.copy2(keymap_src, keymap_dst)
 
     # Code sign the app
     sign_macos_app(app_path)

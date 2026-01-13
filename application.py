@@ -744,10 +744,30 @@ class Application:
 		return text
 
 	def handle_error(self, error, name="Unknown"):
-		"""Handle Mastodon API errors"""
+		"""Handle API errors from Mastodon or Bluesky"""
 		import speak
 		import sound
+		# Try to extract a meaningful error message
 		error_msg = str(error)
+		# If empty or unhelpful, try other sources
+		if not error_msg or error_msg == "None" or error_msg == str(type(error)):
+			# Handle atproto errors which may have response attribute
+			if hasattr(error, 'response') and error.response:
+				try:
+					if hasattr(error.response, 'content'):
+						error_msg = str(error.response.content)
+					elif hasattr(error.response, 'text'):
+						error_msg = error.response.text
+				except:
+					pass
+			# Try other attributes
+			if not error_msg or error_msg == "None":
+				if hasattr(error, 'message'):
+					error_msg = error.message
+				elif hasattr(error, 'args') and error.args:
+					error_msg = str(error.args[0])
+				else:
+					error_msg = type(error).__name__
 		if "429" in error_msg:
 			self.errors.append("Error in " + name + ": Rate limited")
 			return
