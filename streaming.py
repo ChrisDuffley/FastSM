@@ -19,16 +19,7 @@ class MastodonStreamListener(StreamListener):
 			if len(self.account.timelines) > 0:
 				self.account.timelines[0].load(items=[status])
 
-			# Check if it mentions us
-			if hasattr(status, 'mentions'):
-				for mention in status.mentions:
-					if mention.id == self.account.me.id:
-						# Find mentions timeline and add
-						for tl in self.account.timelines:
-							if tl.type == "mentions":
-								tl.load(items=[status])
-								break
-						break
+			# Note: Mentions are handled by on_notification to avoid duplicates
 
 			# Check if it's from us (add to Sent)
 			if status.account.id == self.account.me.id:
@@ -61,9 +52,10 @@ class MastodonStreamListener(StreamListener):
 				# Extract the status and give it the notification ID for dedup
 				status = notification.status
 				# Store original ID and set notification ID as primary for timeline tracking
+				# Use str() to match REST API format for proper deduplication
 				original_status_id = status.id
-				status.id = notification.id
-				status._notification_id = notification.id
+				status.id = str(notification.id)
+				status._notification_id = str(notification.id)
 				status._original_status_id = original_status_id
 
 				for tl in self.account.timelines:
