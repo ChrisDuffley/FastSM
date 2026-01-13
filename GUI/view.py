@@ -53,6 +53,10 @@ class ViewGui(wx.Dialog):
 			pass
 
 		self.post_text = self.account.app.process_status(self.status, True)
+
+		# Update display_name to match the current self.status.account (may have changed for boosts)
+		display_name = getattr(self.status.account, 'display_name', '') or self.status.account.acct
+
 		wx.Dialog.__init__(self, None, title=title, size=(350, 200))
 
 		self.Bind(wx.EVT_CLOSE, self.OnClose)
