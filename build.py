@@ -102,8 +102,14 @@ def get_data_files(script_dir: Path):
     return datas
 
 
-def copy_data_files(script_dir: Path, dest_dir: Path):
-    """Copy data files to the distribution folder root."""
+def copy_data_files(script_dir: Path, dest_dir: Path, include_docs: bool = True):
+    """Copy data files to the distribution folder root.
+
+    Args:
+        script_dir: Source directory
+        dest_dir: Destination directory
+        include_docs: Whether to include docs folder (False for macOS app bundle)
+    """
     # Sounds folder
     sounds_src = script_dir / "sounds"
     if sounds_src.exists():
@@ -120,14 +126,15 @@ def copy_data_files(script_dir: Path, dest_dir: Path):
             print(f"Copying {keymap}...")
             shutil.copy2(keymap_src, dest_dir / keymap)
 
-    # Docs folder
-    docs_src = script_dir / "docs"
-    if docs_src.exists():
-        docs_dst = dest_dir / "docs"
-        print("Copying docs folder...")
-        if docs_dst.exists():
-            shutil.rmtree(docs_dst)
-        shutil.copytree(docs_src, docs_dst)
+    # Docs folder (skip for macOS app bundle - goes in DMG instead)
+    if include_docs:
+        docs_src = script_dir / "docs"
+        if docs_src.exists():
+            docs_dst = dest_dir / "docs"
+            print("Copying docs folder...")
+            if docs_dst.exists():
+                shutil.rmtree(docs_dst)
+            shutil.copytree(docs_src, docs_dst)
 
 
 def get_binaries():
@@ -343,10 +350,10 @@ def build_macos(script_dir: Path, output_dir: Path) -> tuple:
         with open(plist_path, 'wb') as f:
             plistlib.dump(plist, f)
 
-    # Copy data files to Resources folder
+    # Copy data files to Resources folder (docs go in DMG, not app)
     resources_dir = app_path / "Contents" / "Resources"
     resources_dir.mkdir(parents=True, exist_ok=True)
-    copy_data_files(script_dir, resources_dir)
+    copy_data_files(script_dir, resources_dir, include_docs=False)
 
     # Code sign the app
     sign_macos_app(app_path)
