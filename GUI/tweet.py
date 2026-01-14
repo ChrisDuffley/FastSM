@@ -141,16 +141,19 @@ class TweetGui(wx.Dialog):
 				self.schedule_panel = wx.Panel(self.panel)
 				schedule_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
-				self.schedule_date = wx.adv.DatePickerCtrl(self.schedule_panel, style=wx.adv.DP_DROPDOWN)
+				# Date picker - label must be created before control for accessibility
 				schedule_sizer.Add(wx.StaticText(self.schedule_panel, -1, "Date:"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+				self.schedule_date = wx.adv.DatePickerCtrl(self.schedule_panel, style=wx.adv.DP_DROPDOWN)
 				schedule_sizer.Add(self.schedule_date, 0, wx.ALL, 5)
 
-				self.schedule_hour = wx.SpinCtrl(self.schedule_panel, -1, "12", min=0, max=23, size=(60, -1))
+				# Hour spinner
 				schedule_sizer.Add(wx.StaticText(self.schedule_panel, -1, "Hour:"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+				self.schedule_hour = wx.SpinCtrl(self.schedule_panel, -1, "12", min=0, max=23, size=(60, -1))
 				schedule_sizer.Add(self.schedule_hour, 0, wx.ALL, 5)
 
+				# Minute spinner
+				schedule_sizer.Add(wx.StaticText(self.schedule_panel, -1, "Minute:"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
 				self.schedule_minute = wx.SpinCtrl(self.schedule_panel, -1, "0", min=0, max=59, size=(60, -1))
-				schedule_sizer.Add(wx.StaticText(self.schedule_panel, -1, "Min:"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
 				schedule_sizer.Add(self.schedule_minute, 0, wx.ALL, 5)
 
 				self.schedule_panel.SetSizer(schedule_sizer)
