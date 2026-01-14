@@ -118,6 +118,14 @@ class timeline(object):
 				self.func = lambda **kwargs: self.account._platform.get_list_timeline(self.data, **kwargs)
 			else:
 				self.func = lambda **kwargs: self.account.api.timeline_list(id=self.data, **kwargs)
+			# Fetch list members for streaming (in background to not block startup)
+			def fetch_members():
+				try:
+					members = self.account.api.list_accounts(id=self.data)
+					self.members = [m.id for m in members]
+				except:
+					pass
+			threading.Thread(target=fetch_members, daemon=True).start()
 		elif self.type == "search":
 			self.func = lambda **kwargs: self._search_statuses(**kwargs)
 		elif self.type == "feed":
