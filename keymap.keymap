@@ -52,3 +52,5 @@ alt+win+control+a=speak_account
 control+alt+shift+win+return=PostUrl
 alt+win+shift+e=Read
 alt+win+shift+m=Mute
+alt+win+l=Follow
+alt+win+shift+l=Unfollow

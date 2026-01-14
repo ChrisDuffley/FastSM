@@ -182,4 +182,14 @@ class invisible_interface(object):
 	def FilterTimeline(self):
 		main.window.OnFilterTimeline()
 
+	def Follow(self):
+		status = main.window.get_current_status()
+		if status:
+			misc.follow(get_app().currentAccount, status)
+
+	def Unfollow(self):
+		status = main.window.get_current_status()
+		if status:
+			misc.unfollow(get_app().currentAccount, status)
+
 inv=invisible_interface()
