@@ -56,6 +56,9 @@ def url_chooser(account, status):
 	title = "Open URL"
 	prompt = "Select a URL?"
 	type = chooser.ChooseGui.TYPE_URL
+	# For boosts, get the actual boosted post
+	if hasattr(status, 'reblog') and status.reblog:
+		status = status.reblog
 	# Get text from status content
 	text = account.app.strip_html(getattr(status, 'content', ''))
 	urlList = account.app.find_urls_in_text(text)
