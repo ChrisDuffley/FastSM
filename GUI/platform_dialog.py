@@ -38,6 +38,9 @@ class PlatformSelectDialog(wx.Dialog):
         panel.SetSizer(sizer)
         self.Centre()
 
+        # Set focus to first radio button
+        self.mastodon_radio.SetFocus()
+
     def get_platform(self) -> str:
         """Return the selected platform name."""
         if self.bluesky_radio.GetValue():

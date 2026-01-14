@@ -225,6 +225,9 @@ class TimelineFilterDialog(wx.Dialog):
         panel.SetSizer(main_box)
         panel.Layout()
 
+        # Set focus to first checkbox
+        self.show_original.SetFocus()
+
     def _sync_unfiltered_statuses(self):
         """Sync _unfiltered_statuses with any new posts that came in."""
         if not hasattr(self.timeline, '_unfiltered_statuses'):

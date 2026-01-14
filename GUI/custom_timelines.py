@@ -230,6 +230,12 @@ class CustomTimelinesDialog(wx.Dialog):
         self.panel.SetSizer(self.main_box)
         self.panel.Layout()
 
+        # Set focus to first interactive control (list or search text for Bluesky)
+        if hasattr(self, 'search_text'):
+            self.search_text.SetFocus()
+        else:
+            self.list.SetFocus()
+
     def _setup_mastodon_ui(self):
         """Set up UI for Mastodon timelines."""
         label = wx.StaticText(self.panel, -1, "Available Timelines:")

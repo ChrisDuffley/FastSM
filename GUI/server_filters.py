@@ -89,6 +89,9 @@ class ServerFiltersDialog(wx.Dialog):
         # Load filters
         self.load_filters()
 
+        # Set focus to filter list
+        self.filter_list.SetFocus()
+
     def load_filters(self):
         """Load filters from the server."""
         self.filter_list.Clear()

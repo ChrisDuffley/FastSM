@@ -513,6 +513,7 @@ class ViewTextGui(wx.Dialog):
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
 		self.panel.Layout()
+		self.text.SetFocus()
 
 	def OnClose(self, event):
 		self.Destroy()
@@ -557,6 +558,7 @@ class ViewImageGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Close")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.panel.Layout()
+		self.close.SetFocus()
 
 	def OnClose(self, event):
 		self.Destroy()

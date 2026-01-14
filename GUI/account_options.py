@@ -67,7 +67,6 @@ class OptionsGui(wx.Dialog):
 		self.notebook = wx.Notebook(self.panel)
 		self.general=general(self.account, self.notebook)
 		self.notebook.AddPage(self.general, "General")
-		self.general.SetFocus()
 		self.main_box.Add(self.notebook, 0, wx.ALL, 10)
 		self.ok = wx.Button(self.panel, wx.ID_OK, "&OK")
 		self.ok.SetDefault()
@@ -77,6 +76,7 @@ class OptionsGui(wx.Dialog):
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
 		self.panel.Layout()
+		self.general.soundpackslist.SetFocus()
 
 	def OnOK(self, event):
 		self.account.prefs.soundpack=self.general.sp

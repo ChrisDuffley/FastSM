@@ -135,7 +135,6 @@ class OptionsGui(wx.Dialog):
 		self.notebook = wx.Notebook(self.panel)
 		self.general=general(self.notebook)
 		self.notebook.AddPage(self.general, "General")
-		self.general.SetFocus()
 		self.templates=templates(self.notebook)
 		self.notebook.AddPage(self.templates, "Templates")
 		self.advanced=advanced(self.notebook)
@@ -149,6 +148,7 @@ class OptionsGui(wx.Dialog):
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
 		self.panel.Layout()
+		self.general.ask_dismiss.SetFocus()
 
 	def OnOK(self, event):
 		refresh=False
