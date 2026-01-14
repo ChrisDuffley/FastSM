@@ -1,9 +1,9 @@
 import threading
-import os
-import json
 
 def _has_bluesky_accounts():
 	"""Check if any Bluesky accounts are configured (without loading full config module)."""
+	import os
+	import json
 	# Check for portable mode (userdata folder in current directory)
 	userdata_path = os.path.join(os.getcwd(), "userdata")
 	if os.path.isdir(userdata_path):
