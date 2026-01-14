@@ -79,8 +79,17 @@ class Config(MutableMapping):
 	@property
 	def config_file(self):
 		"""Get the path to the config file."""
-		# In portable mode, don't add app name subdirectory (userdata is already app-specific)
+		# In portable mode, don't add app name prefix (userdata is already app-specific)
+		# But still add subdirectories for account configs etc.
 		if is_portable_mode():
+			# Strip "FastSM/" prefix if present, keep the rest
+			name = self._name
+			if name.startswith("FastSM/"):
+				name = name[7:]  # Remove "FastSM/" prefix
+			elif name == "FastSM":
+				name = ""  # Main config, no subdirectory
+			if name:
+				return os.path.join(self._user_config_home, name, "config.json")
 			return os.path.join(self._user_config_home, "config.json")
 		return os.path.join(self._user_config_home, self._name, "config.json")
 
