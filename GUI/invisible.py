@@ -1,5 +1,5 @@
 from application import get_app
-from . import main
+from . import main, misc
 import speak
 import sound
 import threading
