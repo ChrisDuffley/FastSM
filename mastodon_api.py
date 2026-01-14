@@ -22,6 +22,13 @@ class mastodon(object):
 	"""Multi-platform account wrapper. Despite the name, supports both Mastodon and Bluesky."""
 
 	def __init__(self, app, index):
+		import time
+		_init_start = time.time()
+		def _log(msg):
+			print(f"    [{time.time() - _init_start:.2f}s] account{index}: {msg}")
+		self._log = _log
+
+		_log("Starting account init...")
 		self.app = app
 		self.stream_thread = None
 		self.ready = False
@@ -36,6 +43,7 @@ class mastodon(object):
 		self.stream_listener = None
 		self.stream = None
 		# In portable mode, don't add FastSM prefix (userdata is already app-specific)
+		_log("Loading account config...")
 		if config.is_portable_mode():
 			self.prefs = config.Config(name="account"+str(index), autosave=True)
 			self.confpath = self.prefs._user_config_home+"/account"+str(index)
@@ -88,6 +96,8 @@ class mastodon(object):
 
 	def _init_mastodon(self, index):
 		"""Initialize Mastodon account."""
+		_log = self._log
+		_log("Initializing Mastodon...")
 		# Mastodon-specific config
 		self.prefs.instance_url = self.prefs.get("instance_url", "")
 		self.prefs.access_token = self.prefs.get("access_token", "")
@@ -144,6 +154,7 @@ class mastodon(object):
 				sys.exit()
 
 		# Initialize the API
+		_log("Creating Mastodon API client...")
 		self.api = Mastodon(
 			client_id=self.prefs.client_id,
 			client_secret=self.prefs.client_secret,
@@ -152,6 +163,7 @@ class mastodon(object):
 		)
 
 		# Verify credentials and get user info
+		_log("Verifying credentials...")
 		try:
 			self.me = self.api.account_verify_credentials()
 		except MastodonError as e:
@@ -161,6 +173,7 @@ class mastodon(object):
 			sys.exit()
 
 		# Get instance info for character limit
+		_log("Getting instance info...")
 		try:
 			instance_info = self.api.instance()
 			if hasattr(instance_info, 'configuration') and hasattr(instance_info.configuration, 'statuses'):
@@ -174,7 +187,8 @@ class mastodon(object):
 			self.default_visibility = 'public'
 
 		# Initialize platform backend with user cache
-		self._platform = MastodonAccount(self.app, index, self.api, self.me, self.confpath)
+		_log("Initializing platform backend...")
+		self._platform = MastodonAccount(self.app, index, self.api, self.me, self.confpath, self.max_chars)
 
 		# Migrate global user cache to per-account if this is the first run
 		self._migrate_user_cache()
@@ -182,11 +196,13 @@ class mastodon(object):
 		self._finish_init(index)
 
 		# Create default timelines for Mastodon
+		_log("Creating default timelines...")
 		timeline.add(self, "Home", "home")
 		timeline.add(self, "Notifications", "notifications")
 		timeline.add(self, "Mentions", "mentions")
 		timeline.add(self, "Conversations", "conversations")
 		timeline.add(self, "Sent", "user", self.me.acct, self.me)
+		_log("Default timelines created, restoring saved timelines...")
 
 		# Restore saved timelines (avoid API calls during startup for speed)
 		for ut_entry in list(self.prefs.user_timelines):
@@ -280,7 +296,9 @@ class mastodon(object):
 		# Don't start streaming yet - wait for initial timeline loads to complete
 		# Streaming will be started by _check_initial_loads_complete()
 
+		_log("Finishing timeline init...")
 		self._finish_timeline_init()
+		_log("Account initialization complete")
 
 	def _init_bluesky(self, index):
 		"""Initialize Bluesky account."""

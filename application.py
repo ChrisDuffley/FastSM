@@ -78,6 +78,12 @@ class Application:
 		if self._initialized:
 			return
 
+		import time
+		_load_start = time.time()
+		def _log(msg):
+			print(f"  [{time.time() - _load_start:.2f}s] load: {msg}")
+
+		_log("Importing modules...")
 		import sound
 		from GUI import main
 		import mastodon_api as t
@@ -85,6 +91,7 @@ class Application:
 
 		threading.Thread(target=self.cfu).start()
 
+		_log("Loading config...")
 		self.prefs = config.Config(name="FastSM", autosave=True)
 		# In portable mode, userdata folder is already app-specific, don't add /FastSM
 		if config.is_portable_mode():
@@ -99,14 +106,37 @@ class Application:
 			except:
 				pass
 
-		if os.path.exists(self.confpath + "/sounds/default"):
-			shutil.rmtree(self.confpath + "/sounds/default")
-		if not os.path.exists(self.confpath + "/sounds"):
-			os.makedirs(self.confpath + "/sounds")
-		if platform.system() == "Darwin":
-			shutil.copytree("/applications/fastsm.app/sounds/default", self.confpath + "/sounds/default")
+		# Only copy default sounds if they don't exist or app version changed
+		sounds_version_file = self.confpath + "/sounds/.version"
+		sounds_need_update = False
+		if not os.path.exists(self.confpath + "/sounds/default"):
+			sounds_need_update = True
+		elif os.path.exists(sounds_version_file):
+			try:
+				with open(sounds_version_file, 'r') as f:
+					if f.read().strip() != version:
+						sounds_need_update = True
+			except:
+				sounds_need_update = True
 		else:
-			shutil.copytree("sounds/default", self.confpath + "/sounds/default")
+			# No version file - assume needs update for safety
+			sounds_need_update = True
+
+		if sounds_need_update:
+			if os.path.exists(self.confpath + "/sounds/default"):
+				shutil.rmtree(self.confpath + "/sounds/default")
+			if not os.path.exists(self.confpath + "/sounds"):
+				os.makedirs(self.confpath + "/sounds")
+			if platform.system() == "Darwin":
+				shutil.copytree("/applications/fastsm.app/sounds/default", self.confpath + "/sounds/default")
+			else:
+				shutil.copytree("sounds/default", self.confpath + "/sounds/default")
+			# Write version file
+			try:
+				with open(sounds_version_file, 'w') as f:
+					f.write(version)
+			except:
+				pass
 
 		# Load preferences with defaults
 		self.prefs.timelinecache_version = self.prefs.get("timelinecache_version", 1)
@@ -158,6 +188,7 @@ class Application:
 		if self.prefs.invisible:
 			main.window.register_keys()
 
+		_log("Loading user cache...")
 		# Load user cache
 		try:
 			f = open(self.confpath + "/usercache", "rb")
@@ -170,11 +201,14 @@ class Application:
 			self.users = []
 			self.prefs.user_reversed = True
 
+		_log("Loading timeline settings...")
 		self.load_timeline_settings()
 
+		_log("Loading accounts...")
 		# Load accounts - first one on main thread, rest in parallel if already configured
 		if self.prefs.accounts > 0:
 			# First account must be on main thread (handles auth dialogs, sets currentAccount)
+			_log("Adding first account session...")
 			self.add_session()
 
 			# Load remaining accounts in parallel if more than one
@@ -199,6 +233,7 @@ class Application:
 				for i in sequential:
 					self.add_session(i)
 
+		_log("All accounts loaded, initialization complete")
 		self._initialized = True
 
 	def add_session(self, index=None):

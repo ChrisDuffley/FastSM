@@ -28,26 +28,17 @@ class MastodonAccount(PlatformAccount):
     supports_scheduling = True
     supports_editing = True
 
-    def __init__(self, app, index: int, api: Mastodon, me, confpath: str):
+    def __init__(self, app, index: int, api: Mastodon, me, confpath: str, max_chars: int = 500):
         super().__init__(app, index)
         self.api = api
         self._me = mastodon_user_to_universal(me)
         self._raw_me = me  # Keep original for compatibility
         self.confpath = confpath
+        self._max_chars = max_chars
 
         # Initialize user cache
         self.user_cache = UserCache(confpath, 'mastodon', str(self._me.id))
         self.user_cache.load()
-
-        # Get max chars from instance
-        try:
-            instance_info = api.instance()
-            if hasattr(instance_info, 'configuration') and hasattr(instance_info.configuration, 'statuses'):
-                self._max_chars = instance_info.configuration.statuses.max_characters
-            else:
-                self._max_chars = 500
-        except:
-            self._max_chars = 500
 
         # Get default visibility
         try:
