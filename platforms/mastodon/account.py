@@ -164,6 +164,7 @@ class MastodonAccount(PlatformAccount):
             {'type': 'local', 'id': 'local', 'name': 'Local Timeline', 'description': 'Posts from users on this instance'},
             {'type': 'federated', 'id': 'federated', 'name': 'Federated Timeline', 'description': 'Posts from all known instances'},
             {'type': 'instance', 'id': 'instance', 'name': 'Instance Timeline', 'description': 'Local timeline from another instance'},
+            {'type': 'remote_user', 'id': 'remote_user', 'name': 'Remote User Timeline', 'description': 'User timeline from another instance'},
         ]
 
     # ============ Instance Timeline Methods ============
@@ -243,6 +244,75 @@ class MastodonAccount(PlatformAccount):
                     # Construct URL if not present
                     status.url = f"{instance_url}/@{status.account.acct}/{status.id}"
                 # Don't cache users from instance timelines - their IDs are from the remote instance
+
+            return result
+        except MastodonError:
+            return []
+        except Exception:
+            return []
+
+    def get_remote_user_timeline(self, instance_url: str, username: str, limit: int = 40, **kwargs) -> List[UniversalStatus]:
+        """Fetch a user's timeline from a remote instance.
+
+        Args:
+            instance_url: The URL of the remote instance
+            username: The username on that instance (without @)
+            limit: Maximum number of statuses to fetch
+            **kwargs: Additional parameters (max_id, since_id, etc.)
+
+        Returns:
+            List of statuses from the user's timeline
+        """
+        try:
+            remote_api = self.get_or_create_remote_api(instance_url)
+
+            # Look up the user on the remote instance
+            results = remote_api.account_search(username, limit=1)
+            if not results:
+                return []
+
+            # Find exact match
+            remote_user = None
+            for user in results:
+                if user.acct.lower() == username.lower() or user.username.lower() == username.lower():
+                    remote_user = user
+                    break
+
+            if not remote_user:
+                # Take first result if no exact match
+                remote_user = results[0]
+
+            # Get the user's statuses
+            statuses = remote_api.account_statuses(remote_user.id, limit=limit, **kwargs)
+            result = self._convert_statuses(statuses)
+
+            # Extract domain from instance URL for user accts
+            from urllib.parse import urlparse
+            parsed = urlparse(instance_url)
+            instance_domain = parsed.netloc or parsed.path.strip('/')
+
+            def fix_user_acct(user):
+                """Add instance domain to user acct if not present."""
+                if user and '@' not in user.acct:
+                    user.acct = f"{user.acct}@{instance_domain}"
+                if user:
+                    user._instance_url = instance_url
+
+            # Mark all statuses as being from a remote instance
+            for status in result:
+                status._instance_url = instance_url
+                if hasattr(status, 'account') and status.account:
+                    fix_user_acct(status.account)
+                if hasattr(status, 'reblog') and status.reblog:
+                    status.reblog._instance_url = instance_url
+                    if hasattr(status.reblog, 'account') and status.reblog.account:
+                        fix_user_acct(status.reblog.account)
+                if hasattr(status, 'mentions') and status.mentions:
+                    for mention in status.mentions:
+                        if hasattr(mention, 'acct') and '@' not in mention.acct:
+                            mention.acct = f"{mention.acct}@{instance_domain}"
+                if not hasattr(status, 'url') or not status.url:
+                    status.url = f"{instance_url}/@{status.account.acct}/{status.id}"
 
             return result
         except MastodonError:

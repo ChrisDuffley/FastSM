@@ -130,6 +130,17 @@ class timeline(object):
 			self.removable = True
 			if not silent:
 				sound.play(self.account, "open")
+		elif self.type == "remote_user":
+			# Remote user timeline from another instance
+			if hasattr(self.account, '_platform') and self.account._platform:
+				inst_url = self.data.get('url', '') if isinstance(self.data, dict) else ''
+				username = self.data.get('username', '') if isinstance(self.data, dict) else ''
+				self.func = lambda **kwargs: self.account._platform.get_remote_user_timeline(inst_url, username, **kwargs)
+			else:
+				self.func = lambda **kwargs: []
+			self.removable = True
+			if not silent:
+				sound.play(self.account, "open")
 
 		if self.type != "conversation":
 			threading.Thread(target=self.load, daemon=True).start()
@@ -204,7 +215,7 @@ class timeline(object):
 			pass
 
 	def hide_tl(self):
-		if self.type == "user" and self.name != "Sent" or self.type == "list" or self.type == "search" or self.type == "conversation" or self.type == "instance":
+		if self.type == "user" and self.name != "Sent" or self.type == "list" or self.type == "search" or self.type == "conversation" or self.type == "instance" or self.type == "remote_user":
 			self.app.alert("You can't hide this timeline. Try closing it instead.", "Error")
 			return
 		self.hide = True
@@ -320,6 +331,13 @@ class timeline(object):
 						self.account.prefs.instance_timelines = [
 							item for item in self.account.prefs.instance_timelines
 							if item.get('url') != self.data
+						]
+					if self.type == "remote_user":
+						inst_url = self.data.get('url', '') if isinstance(self.data, dict) else ''
+						username = self.data.get('username', '') if isinstance(self.data, dict) else ''
+						self.account.prefs.remote_user_timelines = [
+							item for item in self.account.prefs.remote_user_timelines
+							if not (item.get('url') == inst_url and item.get('username') == username)
 						]
 					self.account.timelines.remove(self)
 					if self.account == self.app.currentAccount:

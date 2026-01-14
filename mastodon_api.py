@@ -50,6 +50,7 @@ class mastodon(object):
 		self.prefs.search_timelines = self.prefs.get("search_timelines", [])
 		self.prefs.custom_timelines = self.prefs.get("custom_timelines", [])  # [{type, id, name}, ...]
 		self.prefs.instance_timelines = self.prefs.get("instance_timelines", [])  # [{url, name}, ...]
+		self.prefs.remote_user_timelines = self.prefs.get("remote_user_timelines", [])  # [{url, username, name}, ...]
 
 		# Remote API instances for instance timelines (unauthenticated)
 		self.remote_apis = {}
@@ -226,6 +227,17 @@ class mastodon(object):
 					self.timelines.append(timeline.timeline(self, name=inst_name, type="instance", data=inst_url, silent=True))
 			except:
 				self.prefs.instance_timelines.remove(inst)
+
+		# Restore remote user timelines
+		for rut in list(self.prefs.remote_user_timelines):
+			try:
+				inst_url = rut.get('url', '')
+				username = rut.get('username', '')
+				rut_name = rut.get('name', f"@{username}@{inst_url.replace('https://', '')}")
+				if inst_url and username:
+					self.timelines.append(timeline.timeline(self, name=rut_name, type="remote_user", data={'url': inst_url, 'username': username}, silent=True))
+			except:
+				self.prefs.remote_user_timelines.remove(rut)
 
 		self.stream_listener = None
 		self.stream = None

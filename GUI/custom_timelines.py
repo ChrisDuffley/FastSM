@@ -82,6 +82,56 @@ def add_instance_timeline(account, instance_url, focus=True):
     return True
 
 
+def add_remote_user_timeline(account, instance_url, username, focus=True):
+    """Add a remote user timeline (user timeline from a remote instance).
+
+    Args:
+        account: The account to add the timeline to
+        instance_url: The URL of the remote instance (e.g., 'mastodon.social')
+        username: The username on that instance
+        focus: Whether to focus the new timeline
+
+    Returns:
+        True if successful, False otherwise
+    """
+    # Normalize URL
+    if not instance_url.startswith('http'):
+        instance_url = 'https://' + instance_url
+    instance_url = instance_url.rstrip('/')
+
+    # Normalize username (remove @ if present)
+    username = username.lstrip('@')
+
+    # Check if already exists
+    for rut in account.prefs.remote_user_timelines:
+        if rut.get('url') == instance_url and rut.get('username').lower() == username.lower():
+            if focus:
+                get_app().alert("This remote user timeline is already open.", "Error")
+            return False
+
+    # Create timeline name
+    domain = instance_url.replace('https://', '').replace('http://', '')
+    tl_name = f"@{username}@{domain}"
+
+    # Add the timeline
+    account.timelines.append(timeline.timeline(account, name=tl_name, type="remote_user", data={'url': instance_url, 'username': username}))
+
+    # Save to preferences
+    account.prefs.remote_user_timelines.append({
+        'url': instance_url,
+        'username': username,
+        'name': tl_name
+    })
+
+    main.window.refreshTimelines()
+    if focus:
+        main.window.list.SetSelection(len(account.timelines) - 1)
+        account.currentIndex = len(account.timelines) - 1
+        main.window.on_list_change(None)
+
+    return True
+
+
 class CustomTimelinesDialog(wx.Dialog):
     """Dialog for browsing and adding custom timelines."""
 
@@ -237,6 +287,40 @@ class CustomTimelinesDialog(wx.Dialog):
                     success = add_instance_timeline(self.account, instance_url)
                     if success:
                         self.Destroy()
+                else:
+                    get_app().alert("Please enter an instance URL.", "Error")
+            else:
+                dlg.Destroy()
+            return
+
+        # Handle remote user timeline - prompt for instance URL and username
+        if tl_type == 'remote_user':
+            dlg = wx.TextEntryDialog(
+                self,
+                "Enter the instance URL (e.g., mastodon.social, fosstodon.org):",
+                "Remote User Timeline"
+            )
+            if dlg.ShowModal() == wx.ID_OK:
+                instance_url = dlg.GetValue().strip()
+                dlg.Destroy()
+                if instance_url:
+                    # Now prompt for username
+                    dlg2 = wx.TextEntryDialog(
+                        self,
+                        "Enter the username (e.g., user or @user):",
+                        "Remote User Timeline"
+                    )
+                    if dlg2.ShowModal() == wx.ID_OK:
+                        username = dlg2.GetValue().strip()
+                        dlg2.Destroy()
+                        if username:
+                            success = add_remote_user_timeline(self.account, instance_url, username)
+                            if success:
+                                self.Destroy()
+                        else:
+                            get_app().alert("Please enter a username.", "Error")
+                    else:
+                        dlg2.Destroy()
                 else:
                     get_app().alert("Please enter an instance URL.", "Error")
             else:
