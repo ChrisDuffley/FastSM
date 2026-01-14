@@ -187,6 +187,7 @@ class MainGui(wx.Frame):
 		self.list2=wx.ListBox(self.panel, -1,size=(1200,800))
 		self.main_box.Add(self.list2, 0, wx.ALL, 10)
 		self.list2.Bind(wx.EVT_LISTBOX, self.on_list2_change)
+		self.list2.Bind(wx.EVT_CONTEXT_MENU, self.OnPostContextMenu)
 		self.panel.Layout()
 
 	def register_keys(self):
@@ -444,6 +445,68 @@ class MainGui(wx.Frame):
 			viewer.Show()
 		else:
 			speak.speak("No messages in this conversation")
+
+	def OnPostContextMenu(self, event):
+		"""Show context menu for posts list."""
+		# Make sure we have a valid selection
+		if self.list2.GetSelection() < 0:
+			return
+
+		menu = wx.Menu()
+
+		# Core actions
+		m_view = menu.Append(-1, "View post")
+		self.Bind(wx.EVT_MENU, self.OnView, m_view)
+
+		m_reply = menu.Append(-1, "Reply")
+		self.Bind(wx.EVT_MENU, self.OnReply, m_reply)
+
+		m_boost = menu.Append(-1, "Boost")
+		self.Bind(wx.EVT_MENU, self.OnRetweet, m_boost)
+
+		m_quote = menu.Append(-1, "Quote")
+		self.Bind(wx.EVT_MENU, self.OnQuote, m_quote)
+
+		m_fav = menu.Append(-1, "Favourite")
+		self.Bind(wx.EVT_MENU, self.OnLike, m_fav)
+
+		menu.AppendSeparator()
+
+		m_copy = menu.Append(-1, "Copy to clipboard")
+		self.Bind(wx.EVT_MENU, self.onCopy, m_copy)
+
+		m_url = menu.Append(-1, "Open URL in post")
+		self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
+
+		m_post_url = menu.Append(-1, "Open post URL")
+		self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
+
+		menu.AppendSeparator()
+
+		m_user_tl = menu.Append(-1, "User timeline")
+		self.Bind(wx.EVT_MENU, self.OnUserTimeline, m_user_tl)
+
+		m_user_profile = menu.Append(-1, "User profile")
+		self.Bind(wx.EVT_MENU, self.OnUserProfile, m_user_profile)
+
+		m_conversation = menu.Append(-1, "Load conversation")
+		self.Bind(wx.EVT_MENU, self.OnConversation, m_conversation)
+
+		menu.AppendSeparator()
+
+		m_follow = menu.Append(-1, "Follow")
+		self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
+
+		m_unfollow = menu.Append(-1, "Unfollow")
+		self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
+
+		menu.AppendSeparator()
+
+		m_delete = menu.Append(-1, "Delete")
+		self.Bind(wx.EVT_MENU, self.OnDelete, m_delete)
+
+		self.PopupMenu(menu)
+		menu.Destroy()
 
 	def onPrev(self,event=None):
 		tl = get_app().currentAccount.currentTimeline
