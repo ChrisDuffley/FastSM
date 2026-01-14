@@ -209,9 +209,41 @@ class TimelineFilterDialog(wx.Dialog):
                     self.timeline._unfiltered_statuses.append(status)
                     unfiltered_ids.add(status_id)
 
+    def _get_current_status_id(self):
+        """Get the ID of the currently focused status."""
+        from . import main as main_window
+        try:
+            selection = main_window.window.posts.GetSelection()
+            if selection >= 0 and selection < len(self.timeline.statuses):
+                status = self.timeline.statuses[selection]
+                return getattr(status, 'id', None)
+        except:
+            pass
+        return None
+
+    def _restore_selection(self, status_id):
+        """Restore selection to the status with the given ID, or top if not found."""
+        from . import main as main_window
+        if status_id is None:
+            main_window.window.posts.SetSelection(0)
+            return
+
+        # Find the status by ID
+        for i, status in enumerate(self.timeline.statuses):
+            if getattr(status, 'id', None) == status_id:
+                main_window.window.posts.SetSelection(i)
+                return
+
+        # Not found, go to top
+        if len(self.timeline.statuses) > 0:
+            main_window.window.posts.SetSelection(0)
+
     def on_apply(self, event):
         """Apply the filter to the timeline."""
         from . import main as main_window
+
+        # Remember current position
+        current_id = self._get_current_status_id()
 
         # Save filter settings to timeline
         self.timeline._filter_settings = {
@@ -233,14 +265,18 @@ class TimelineFilterDialog(wx.Dialog):
         self.timeline.statuses = filtered
         self.timeline._is_filtered = True
 
-        # Refresh the list
+        # Refresh the list and restore position
         main_window.window.refreshList()
+        self._restore_selection(current_id)
 
         self.Destroy()
 
     def on_clear(self, event):
         """Clear the filter and restore all posts."""
         from . import main as main_window
+
+        # Remember current position
+        current_id = self._get_current_status_id()
 
         if hasattr(self.timeline, '_unfiltered_statuses'):
             self.timeline.statuses = list(self.timeline._unfiltered_statuses)
@@ -250,7 +286,10 @@ class TimelineFilterDialog(wx.Dialog):
         if hasattr(self.timeline, '_filter_settings'):
             del self.timeline._filter_settings
 
+        # Refresh the list and restore position
         main_window.window.refreshList()
+        self._restore_selection(current_id)
+
         self.Destroy()
 
 
