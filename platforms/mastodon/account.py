@@ -299,7 +299,6 @@ class MastodonAccount(PlatformAccount):
                     pass
 
             if not remote_user:
-                print(f"Could not find user {username} on {instance_url}")
                 return []
 
             # Get the user's statuses
@@ -335,11 +334,9 @@ class MastodonAccount(PlatformAccount):
                     status.url = f"{instance_url}/@{status.account.acct}/{status.id}"
 
             return result
-        except MastodonError as e:
-            print(f"Remote user timeline MastodonError: {e}")
+        except MastodonError:
             return []
-        except Exception as e:
-            print(f"Remote user timeline error: {e}")
+        except Exception:
             return []
 
     def resolve_remote_status(self, status) -> str:
