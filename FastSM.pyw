@@ -1,6 +1,40 @@
 import sys
 sys.dont_write_bytecode = True
 
+def _clear_requests_pycache():
+	"""Clear corrupted pycache for requests library."""
+	import shutil
+	import os
+	try:
+		import requests
+		requests_path = os.path.dirname(requests.__file__)
+	except:
+		# requests not importable, find it manually
+		for path in sys.path:
+			requests_path = os.path.join(path, 'requests')
+			if os.path.isdir(requests_path):
+				break
+		else:
+			return False
+
+	pycache = os.path.join(requests_path, '__pycache__')
+	if os.path.exists(pycache):
+		try:
+			shutil.rmtree(pycache)
+			return True
+		except:
+			pass
+	return False
+
+# Try to import requests, clear pycache if it fails
+try:
+	import requests
+except Exception:
+	if _clear_requests_pycache():
+		# Retry after clearing cache
+		import importlib
+		import requests
+
 import threading
 
 def _has_bluesky_accounts():
