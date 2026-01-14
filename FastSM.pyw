@@ -1,7 +1,17 @@
 import time
+import threading
 _start = time.time()
 def _log(msg):
 	print(f"[{time.time() - _start:.2f}s] {msg}")
+
+# Start importing atproto immediately in background (takes ~35s)
+# This gives it a head start while we do other imports
+def _preimport_atproto():
+	try:
+		import atproto
+	except:
+		pass
+threading.Thread(target=_preimport_atproto, daemon=True).start()
 
 _log("Starting imports...")
 import application
