@@ -165,7 +165,50 @@ class ViewGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Close")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+
+		# Keyboard shortcuts
+		menu = wx.Menu()
+		m_like = menu.Append(-1, "Like")
+		m_unlike = menu.Append(-1, "Unlike")
+		self.Bind(wx.EVT_MENU, self.OnLike, m_like)
+		self.Bind(wx.EVT_MENU, self.OnUnlike, m_unlike)
+		accel = [
+			(wx.ACCEL_CTRL, ord('K'), m_like.GetId()),
+			(wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('K'), m_unlike.GetId()),
+		]
+		accel_tbl = wx.AcceleratorTable(accel)
+		self.SetAcceleratorTable(accel_tbl)
+
 		self.panel.Layout()
+
+	def OnLike(self, event):
+		"""Like/favourite the post."""
+		import speak
+		try:
+			status_id = misc.get_interaction_id(self.account, self.status)
+			if not getattr(self.status, 'favourited', False):
+				self.account.favourite(status_id)
+				self.account.app.prefs.favourites_sent += 1
+				self.status.favourited = True
+				sound.play(self.account, "like")
+			else:
+				speak.speak("Already liked")
+		except Exception as error:
+			self.account.app.handle_error(error, "like post")
+
+	def OnUnlike(self, event):
+		"""Unlike/unfavourite the post."""
+		import speak
+		try:
+			status_id = misc.get_interaction_id(self.account, self.status)
+			if getattr(self.status, 'favourited', False):
+				self.account.unfavourite(status_id)
+				self.status.favourited = False
+				sound.play(self.account, "unlike")
+			else:
+				speak.speak("Not liked")
+		except Exception as error:
+			self.account.app.handle_error(error, "unlike post")
 
 	def OnViewOrig(self, event):
 		if hasattr(self.status, 'reblog') and self.status.reblog:
@@ -301,9 +344,16 @@ class UserViewGui(wx.Dialog):
 
 		menu = wx.Menu()
 		m_speak_user = menu.Append(-1, "Speak user", "speak")
+		m_follow = menu.Append(-1, "Follow")
+		m_unfollow = menu.Append(-1, "Unfollow")
 		self.Bind(wx.EVT_MENU, self.OnSpeakUser, m_speak_user)
-		accel = []
-		accel.append((wx.ACCEL_CTRL, ord(';'), m_speak_user.GetId()))
+		self.Bind(wx.EVT_MENU, self.OnFollowKey, m_follow)
+		self.Bind(wx.EVT_MENU, self.OnUnfollowKey, m_unfollow)
+		accel = [
+			(wx.ACCEL_CTRL, ord(';'), m_speak_user.GetId()),
+			(wx.ACCEL_CTRL, ord('L'), m_follow.GetId()),
+			(wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('L'), m_unfollow.GetId()),
+		]
 		accel_tbl = wx.AcceleratorTable(accel)
 		self.SetAcceleratorTable(accel_tbl)
 		self.panel.Layout()
@@ -382,6 +432,22 @@ class UserViewGui(wx.Dialog):
 	def OnUnfollow(self, event):
 		user = self.users[self.index]
 		misc.unfollow_user(self.account, user.acct)
+
+	def OnFollowKey(self, event):
+		"""Follow user via keyboard shortcut."""
+		import speak
+		if self.follow.IsEnabled():
+			self.OnFollow(event)
+		else:
+			speak.speak("Already following")
+
+	def OnUnfollowKey(self, event):
+		"""Unfollow user via keyboard shortcut."""
+		import speak
+		if self.unfollow.IsEnabled():
+			self.OnUnfollow(event)
+		else:
+			speak.speak("Not following")
 
 	def OnFollowers(self, event):
 		user = self.users[self.index]

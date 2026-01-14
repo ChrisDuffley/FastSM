@@ -214,7 +214,7 @@ def boost(account, status):
 		print(f"boost() got status_id={status_id}")
 		account.boost(status_id)
 		account.app.prefs.boosts_sent += 1
-		sound.play(account, "send_boost")
+		sound.play(account, "send_repost")
 	except Exception as error:
 		account.app.handle_error(error, "boost")
 

@@ -167,7 +167,17 @@ class invisible_interface(object):
 		threading.Thread(target=get_app().currentAccount.currentTimeline.load, kwargs={'speech': True}, daemon=True).start()
 
 	def speak_account(self):
-		speak.speak(get_app().currentAccount.me.acct)
+		account = get_app().currentAccount
+		acct = account.me.acct
+		# Add instance for Mastodon accounts
+		platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+		if platform_type == 'mastodon' and hasattr(account, 'api') and hasattr(account.api, 'api_base_url'):
+			from urllib.parse import urlparse
+			parsed = urlparse(account.api.api_base_url)
+			instance = parsed.netloc or parsed.path.strip('/')
+			if instance:
+				acct = f"{acct} on {instance}"
+		speak.speak(acct)
 
 	def close(self):
 		main.window.OnClose()

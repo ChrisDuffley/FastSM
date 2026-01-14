@@ -180,6 +180,12 @@ class NewListGui(wx.Dialog):
 			self.replies.SetSelection(policy_map.get(policy, 1))
 		self.main_box.Add(self.replies, 0, wx.ALL, 10)
 
+		# Mastodon exclusive setting (hide list members from home timeline)
+		self.exclusive = wx.CheckBox(self.panel, -1, "&Hide list members from home timeline")
+		if self.list_obj is not None:
+			self.exclusive.SetValue(getattr(self.list_obj, 'exclusive', False))
+		self.main_box.Add(self.exclusive, 0, wx.ALL, 10)
+
 		if self.list_obj is not None:
 			self.create = wx.Button(self.panel, wx.ID_DEFAULT, "&Edit list")
 		else:
@@ -196,19 +202,22 @@ class NewListGui(wx.Dialog):
 		import speak
 		replies_map = {0: 'none', 1: 'list', 2: 'followed'}
 		replies_policy = replies_map.get(self.replies.GetSelection(), 'list')
+		exclusive = self.exclusive.GetValue()
 
 		try:
 			if self.list_obj is None:
 				self.account.api.list_create(
 					title=self.text.GetValue(),
-					replies_policy=replies_policy
+					replies_policy=replies_policy,
+					exclusive=exclusive
 				)
 				speak.speak("List created")
 			else:
 				self.account.api.list_update(
 					id=self.list_obj.id,
 					title=self.text.GetValue(),
-					replies_policy=replies_policy
+					replies_policy=replies_policy,
+					exclusive=exclusive
 				)
 				speak.speak("List updated")
 			if self.on_complete:

@@ -37,7 +37,16 @@ class AccountsGui(wx.Dialog):
 		app = get_app()
 		index=0
 		for i in app.accounts:
-			self.list.Insert(i.me.acct,self.list.GetCount())
+			acct = i.me.acct
+			# Add instance for Mastodon accounts
+			platform_type = getattr(i.prefs, 'platform_type', 'mastodon')
+			if platform_type == 'mastodon' and hasattr(i, 'api') and hasattr(i.api, 'api_base_url'):
+				from urllib.parse import urlparse
+				parsed = urlparse(i.api.api_base_url)
+				instance = parsed.netloc or parsed.path.strip('/')
+				if instance:
+					acct = f"{acct} on {instance}"
+			self.list.Insert(acct, self.list.GetCount())
 			if i==app.currentAccount:
 				self.list.SetSelection(index)
 			index+=1

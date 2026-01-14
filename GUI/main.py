@@ -67,8 +67,10 @@ class MainGui(wx.Frame):
 		else:
 			m_quote = menu2.Append(-1, "Quote\tCtrl+Q", "quote")
 		self.Bind(wx.EVT_MENU, self.OnQuote, m_quote)
-		m_like=menu2.Append(-1, "Favourite\tCtrl+L", "favourite")
+		m_like=menu2.Append(-1, "Like\tCtrl+K", "favourite")
 		self.Bind(wx.EVT_MENU, self.OnLike, m_like)
+		m_unlike=menu2.Append(-1, "Unlike\tCtrl+Shift+K", "unfavourite")
+		self.Bind(wx.EVT_MENU, self.OnUnlike, m_unlike)
 		m_url=menu2.Append(-1, "Open URL\tCtrl+O", "url")
 		self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
 		m_tweet_url=menu2.Append(-1, "Open URL of Post\tCtrl+Shift+O", "post_url")
@@ -79,9 +81,9 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onCopy, m_copy)
 		m_message=menu2.Append(-1, "Send message\tCtrl+D", "message")
 		self.Bind(wx.EVT_MENU, self.OnMessage, m_message)
-		m_follow=menu2.Append(-1, "Follow\tCtrl+F", "follow")
+		m_follow=menu2.Append(-1, "Follow\tCtrl+L", "follow")
 		self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
-		m_unfollow=menu2.Append(-1, "Unfollow\tCtrl+Shift+F", "follow")
+		m_unfollow=menu2.Append(-1, "Unfollow\tCtrl+Shift+L", "follow")
 		self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
 		m_add_to_list=menu2.Append(-1, "Add to list\tCtrl+I", "addlist")
 		self.Bind(wx.EVT_MENU, self.OnAddToList, m_add_to_list)
@@ -830,7 +832,33 @@ class MainGui(wx.Frame):
 	def OnLike(self, event=None):
 		status = self.get_current_status()
 		if status:
-			misc.favourite(get_app().currentAccount, status)
+			account = get_app().currentAccount
+			try:
+				status_id = misc.get_interaction_id(account, status)
+				if not getattr(status, 'favourited', False):
+					account.favourite(status_id)
+					account.app.prefs.favourites_sent += 1
+					status.favourited = True
+					sound.play(account, "like")
+				else:
+					speak.speak("Already liked")
+			except Exception as error:
+				account.app.handle_error(error, "like post")
+
+	def OnUnlike(self, event=None):
+		status = self.get_current_status()
+		if status:
+			account = get_app().currentAccount
+			try:
+				status_id = misc.get_interaction_id(account, status)
+				if getattr(status, 'favourited', False):
+					account.unfavourite(status_id)
+					status.favourited = False
+					sound.play(account, "unlike")
+				else:
+					speak.speak("Not liked")
+			except Exception as error:
+				account.app.handle_error(error, "unlike post")
 
 global window
 window=MainGui(application.name+" "+application.version)
