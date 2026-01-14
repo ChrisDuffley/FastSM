@@ -89,36 +89,40 @@ def add_instance_timeline(account, instance_url, focus=True):
     return True
 
 
-def add_remote_user_timeline(account, instance_url, username, focus=True):
+def add_remote_user_timeline(account, full_handle, focus=True):
     """Add a remote user timeline (user timeline from a remote instance).
 
     Args:
         account: The account to add the timeline to
-        instance_url: The URL of the remote instance (e.g., 'mastodon.social')
-        username: The username on that instance
+        full_handle: Full username like 'user@instance.social' or '@user@instance.social'
         focus: Whether to focus the new timeline
 
     Returns:
         True if successful, False otherwise
     """
-    # Normalize URL
-    if not instance_url.startswith('http'):
-        instance_url = 'https://' + instance_url
-    instance_url = instance_url.rstrip('/')
+    # Parse the full handle - strip leading @, then split on @
+    handle = full_handle.lstrip('@')
+    if '@' not in handle:
+        if focus:
+            get_app().alert("Please enter a full handle like user@instance.social", "Error")
+        return False
 
-    # Normalize username (remove @ if present)
-    username = username.lstrip('@')
+    parts = handle.split('@', 1)
+    username = parts[0]
+    instance_domain = parts[1]
+
+    # Build instance URL
+    instance_url = 'https://' + instance_domain
 
     # Check if already exists
     for rut in account.prefs.remote_user_timelines:
-        if rut.get('url') == instance_url and rut.get('username').lower() == username.lower():
+        if rut.get('url') == instance_url and rut.get('username', '').lower() == username.lower():
             if focus:
                 get_app().alert("This remote user timeline is already open.", "Error")
             return False
 
     # Create timeline name
-    domain = instance_url.replace('https://', '').replace('http://', '')
-    tl_name = f"@{username}@{domain}"
+    tl_name = f"@{username}@{instance_domain}"
 
     # Add the timeline
     account.timelines.append(timeline.timeline(account, name=tl_name, type="remote_user", data={'url': instance_url, 'username': username}))
@@ -304,36 +308,22 @@ class CustomTimelinesDialog(wx.Dialog):
                 dlg.Destroy()
             return
 
-        # Handle remote user timeline - prompt for instance URL and username
+        # Handle remote user timeline - prompt for full handle
         if tl_type == 'remote_user':
             dlg = wx.TextEntryDialog(
                 self,
-                "Enter the instance URL (e.g., mastodon.social, fosstodon.org):",
+                "Enter the full username (e.g., user@mastodon.social or @user@instance.org):",
                 "Remote User Timeline"
             )
             if dlg.ShowModal() == wx.ID_OK:
-                instance_url = dlg.GetValue().strip()
+                full_handle = dlg.GetValue().strip()
                 dlg.Destroy()
-                if instance_url:
-                    # Now prompt for username
-                    dlg2 = wx.TextEntryDialog(
-                        self,
-                        "Enter the username (e.g., user or @user):",
-                        "Remote User Timeline"
-                    )
-                    if dlg2.ShowModal() == wx.ID_OK:
-                        username = dlg2.GetValue().strip()
-                        dlg2.Destroy()
-                        if username:
-                            success = add_remote_user_timeline(self.account, instance_url, username)
-                            if success:
-                                self.Destroy()
-                        else:
-                            get_app().alert("Please enter a username.", "Error")
-                    else:
-                        dlg2.Destroy()
+                if full_handle:
+                    success = add_remote_user_timeline(self.account, full_handle)
+                    if success:
+                        self.Destroy()
                 else:
-                    get_app().alert("Please enter an instance URL.", "Error")
+                    get_app().alert("Please enter a username.", "Error")
             else:
                 dlg.Destroy()
             return

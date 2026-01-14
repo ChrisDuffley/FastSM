@@ -140,9 +140,10 @@ class timeline(object):
 		elif self.type == "remote_user":
 			# Remote user timeline from another instance
 			if hasattr(self.account, '_platform') and self.account._platform:
-				inst_url = self.data.get('url', '') if isinstance(self.data, dict) else ''
-				username = self.data.get('username', '') if isinstance(self.data, dict) else ''
-				self.func = lambda **kwargs: self.account._platform.get_remote_user_timeline(inst_url, username, **kwargs)
+				# Store in instance variables to avoid closure issues
+				self._remote_url = self.data.get('url', '') if isinstance(self.data, dict) else ''
+				self._remote_username = self.data.get('username', '') if isinstance(self.data, dict) else ''
+				self.func = self._load_remote_user
 			else:
 				self.func = lambda **kwargs: []
 			self.removable = True
@@ -160,6 +161,12 @@ class timeline(object):
 			if m is not None:
 				self.statuses = m
 				self.initial = False
+
+	def _load_remote_user(self, **kwargs):
+		"""Helper to load remote user timeline"""
+		if hasattr(self.account, '_platform') and self.account._platform:
+			return self.account._platform.get_remote_user_timeline(self._remote_url, self._remote_username, **kwargs)
+		return []
 
 	def _search_statuses(self, **kwargs):
 		"""Helper to search and return only statuses"""
