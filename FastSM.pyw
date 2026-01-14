@@ -1,3 +1,6 @@
+import sys
+sys.dont_write_bytecode = True
+
 import threading
 
 def _has_bluesky_accounts():
@@ -40,8 +43,6 @@ if _has_bluesky_accounts():
 import application
 from application import get_app
 import platform
-import sys
-sys.dont_write_bytecode=True
 if platform.system()!="Darwin":
 	f=open("errors.log","a")
 	sys.stderr=f
