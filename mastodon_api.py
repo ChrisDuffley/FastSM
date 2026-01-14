@@ -127,10 +127,7 @@ class mastodon(object):
 					api_base_url=self.prefs.instance_url
 				)
 				auth_url = temp_api.auth_request_url(scopes=['read', 'write', 'follow', 'push'])
-				if platform.system() != "Darwin":
-					webbrowser.open(auth_url)
-				else:
-					os.system("open " + auth_url)
+				webbrowser.open(auth_url)
 
 				auth_code = ask(caption="Authorization Code",
 					message="Enter the authorization code from your browser:")
