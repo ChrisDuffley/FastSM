@@ -327,6 +327,23 @@ class UserViewGui(wx.Dialog):
 		self.unblock.Bind(wx.EVT_BUTTON, self.OnUnblock)
 		self.main_box.Add(self.unblock, 0, wx.ALL, 10)
 
+		# Show/Hide boosts buttons (Mastodon only)
+		platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+		if platform_type == 'mastodon':
+			self.show_boosts = wx.Button(self.panel, -1, "Show B&oosts")
+			self.show_boosts.Bind(wx.EVT_BUTTON, self.OnShowBoosts)
+			self.main_box.Add(self.show_boosts, 0, wx.ALL, 10)
+
+			self.hide_boosts = wx.Button(self.panel, -1, "&Hide Boosts")
+			self.hide_boosts.Bind(wx.EVT_BUTTON, self.OnHideBoosts)
+			self.main_box.Add(self.hide_boosts, 0, wx.ALL, 10)
+
+			self.show_boosts.Enable(False)
+			self.hide_boosts.Enable(False)
+		else:
+			self.show_boosts = None
+			self.hide_boosts = None
+
 		self.message = wx.Button(self.panel, -1, "&Message")
 		self.message.Bind(wx.EVT_BUTTON, self.OnMessage)
 		self.main_box.Add(self.message, 0, wx.ALL, 10)
@@ -395,13 +412,26 @@ class UserViewGui(wx.Dialog):
 				following = getattr(rel, 'following', False)
 				muting = getattr(rel, 'muting', False)
 				blocking = getattr(rel, 'blocking', False)
+				showing_reblogs = getattr(rel, 'showing_reblogs', True)
 
 				if following:
 					self.unfollow.Enable(True)
 					self.follow.Enable(False)
+					# Show/hide boosts only available when following
+					if self.show_boosts is not None:
+						if showing_reblogs:
+							self.hide_boosts.Enable(True)
+							self.show_boosts.Enable(False)
+						else:
+							self.hide_boosts.Enable(False)
+							self.show_boosts.Enable(True)
 				else:
 					self.unfollow.Enable(False)
 					self.follow.Enable(True)
+					# Disable boosts buttons when not following
+					if self.show_boosts is not None:
+						self.show_boosts.Enable(False)
+						self.hide_boosts.Enable(False)
 
 				if muting:
 					self.unmute.Enable(True)
@@ -423,6 +453,9 @@ class UserViewGui(wx.Dialog):
 			self.unmute.Enable(True)
 			self.block.Enable(True)
 			self.unblock.Enable(True)
+			if self.show_boosts is not None:
+				self.show_boosts.Enable(True)
+				self.hide_boosts.Enable(True)
 
 		self.message.Enable(True)
 		self.timeline.Enable(True)
@@ -493,6 +526,30 @@ class UserViewGui(wx.Dialog):
 		user = self.users[self.index]
 		misc.unblock_user(self.account, user.id)
 		self.on_list_change(None)
+
+	def OnShowBoosts(self, event):
+		"""Show boosts from this user (Mastodon only)."""
+		import speak
+		user = self.users[self.index]
+		try:
+			self.account.api.account_follow(id=user.id, reblogs=True)
+			sound.play(self.account, "unmute")
+			speak.speak(f"Showing boosts from {user.acct}")
+			self.on_list_change(None)
+		except Exception as error:
+			self.account.app.handle_error(error, "show boosts")
+
+	def OnHideBoosts(self, event):
+		"""Hide boosts from this user (Mastodon only)."""
+		import speak
+		user = self.users[self.index]
+		try:
+			self.account.api.account_follow(id=user.id, reblogs=False)
+			sound.play(self.account, "mute")
+			speak.speak(f"Hiding boosts from {user.acct}")
+			self.on_list_change(None)
+		except Exception as error:
+			self.account.app.handle_error(error, "hide boosts")
 
 	def OnFollowKey(self, event):
 		"""Follow user via keyboard shortcut."""

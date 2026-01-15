@@ -78,11 +78,13 @@ if _has_bluesky_accounts():
 import application
 from application import get_app
 import platform
+import os
+# On Windows, redirect stderr to errors.log in the app's directory (not cwd)
 if platform.system()!="Darwin":
-	f=open("errors.log","a")
+	app_dir = os.path.dirname(os.path.abspath(__file__))
+	f=open(os.path.join(app_dir, "errors.log"), "a")
 	sys.stderr=f
 import shutil
-import os
 if os.path.exists(os.path.expandvars(r"%temp%\gen_py")):
 	shutil.rmtree(os.path.expandvars(r"%temp%\gen_py"))
 import wx

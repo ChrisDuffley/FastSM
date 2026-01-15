@@ -217,61 +217,77 @@ class MainGui(wx.Frame):
 			self.list.Bind(wx.EVT_CHAR_HOOK, self.OnListCharHook)
 		self.panel.Layout()
 
+	def _load_keymap_file(self, path):
+		"""Load a keymap file and return dict of key -> action mappings."""
+		keymap = {}
+		if os.path.exists(path):
+			try:
+				with open(path, "r") as f:
+					for line in f:
+						line = line.strip()
+						if "=" in line and not line.startswith("#"):
+							parts = line.split("=", 1)
+							if len(parts) == 2:
+								keymap[parts[0].strip()] = parts[1].strip()
+			except:
+				pass
+		return keymap
+
 	def _load_keymap_with_inheritance(self):
 		"""Load keymap with inheritance from default.
 
 		Returns dict of key -> action mappings.
-		First loads default keymap, then overlays any custom keymap selected by user.
+		First loads default keymap, then custom keymap replaces actions
+		(removing default keys for any actions redefined in custom keymap).
 		"""
-		keymap = {}
+		default_keymap = {}
 
 		# Load default keymap first
 		default_paths = [
 			"keymaps/default.keymap",  # Local dev or bundled
 			os.path.join(get_app().confpath, "keymaps/default.keymap"),  # User config
+			"keymap.keymap",  # Fallback to legacy
 		]
 
-		# Fallback to legacy keymap.keymap for backwards compatibility
-		default_paths.append("keymap.keymap")
-
 		for path in default_paths:
-			if os.path.exists(path):
-				try:
-					with open(path, "r") as f:
-						for line in f:
-							line = line.strip()
-							if "=" in line:
-								parts = line.split("=", 1)
-								if len(parts) == 2:
-									keymap[parts[0].strip()] = parts[1].strip()
-					break
-				except:
-					pass
+			default_keymap = self._load_keymap_file(path)
+			if default_keymap:
+				break
 
-		# Load custom keymap if selected (overlays defaults)
-		custom_keymap = getattr(get_app().prefs, 'keymap', 'default')
-		if custom_keymap and custom_keymap != 'default':
-			# Check user config keymaps folder first
-			custom_paths = [
-				os.path.join(get_app().confpath, f"keymaps/{custom_keymap}.keymap"),
-				f"keymaps/{custom_keymap}.keymap",  # Bundled custom keymaps
-			]
+		# Load custom keymap if selected
+		custom_keymap_name = getattr(get_app().prefs, 'keymap', 'default')
+		if not custom_keymap_name or custom_keymap_name == 'default':
+			return default_keymap
 
-			for path in custom_paths:
-				if os.path.exists(path):
-					try:
-						with open(path, "r") as f:
-							for line in f:
-								line = line.strip()
-								if "=" in line:
-									parts = line.split("=", 1)
-									if len(parts) == 2:
-										keymap[parts[0].strip()] = parts[1].strip()
-						break
-					except:
-						pass
+		# Load custom keymap
+		custom_keymap = {}
+		custom_paths = [
+			os.path.join(get_app().confpath, f"keymaps/{custom_keymap_name}.keymap"),
+			f"keymaps/{custom_keymap_name}.keymap",  # Bundled custom keymaps
+		]
 
-		return keymap
+		for path in custom_paths:
+			custom_keymap = self._load_keymap_file(path)
+			if custom_keymap:
+				break
+
+		if not custom_keymap:
+			return default_keymap
+
+		# Get set of actions defined in custom keymap
+		custom_actions = set(custom_keymap.values())
+
+		# Build final keymap: start with defaults, but remove any keys
+		# whose action is redefined in custom keymap
+		final_keymap = {}
+		for key, action in default_keymap.items():
+			if action not in custom_actions:
+				final_keymap[key] = action
+
+		# Add all custom keymap entries
+		final_keymap.update(custom_keymap)
+
+		return final_keymap
 
 	def register_keys(self):
 		# Invisible hotkeys not supported on Mac
@@ -280,6 +296,8 @@ class MainGui(wx.Frame):
 			return
 		self.invisible=True
 		keymap = self._load_keymap_with_inheritance()
+		# Store registered keys so we can unregister them later
+		self._registered_keymap = keymap.copy()
 		for key, action in keymap.items():
 			success=invisible.register_key(key, action)
 
@@ -288,9 +306,14 @@ class MainGui(wx.Frame):
 		if platform.system() == "Darwin":
 			return
 		self.invisible=False
-		keymap = self._load_keymap_with_inheritance()
+		# Unregister the keys that were actually registered, not the current keymap
+		keymap = getattr(self, '_registered_keymap', None)
+		if keymap is None:
+			# Fallback to loading keymap if we don't have stored keys
+			keymap = self._load_keymap_with_inheritance()
 		for key, action in keymap.items():
 			success=invisible.register_key(key, action, False)
+		self._registered_keymap = None
 
 	def get_current_status(self):
 		"""Get the current status, handling conversation and notification objects properly"""

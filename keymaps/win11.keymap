@@ -1,0 +1,7 @@
+alt+win+control+left=prev_tl
+alt+win+control+right=next_tl
+alt+win+control+up=prev_item
+alt+win+control+down=next_item
+alt+win+i=LikeToggle
+alt+control+shift+up=Volup
+alt+control+shift+down=Voldown
