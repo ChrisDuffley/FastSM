@@ -621,8 +621,22 @@ class MainGui(wx.Frame):
 	def on_list2_change(self, event):
 		get_app().currentAccount.currentTimeline.index=self.list2.GetSelection()
 		status = self.get_current_status()
-		if status and get_app().prefs.earcon_audio and len(sound.get_media_urls(get_app().find_urls_in_status(status))) > 0:
-			sound.play(get_app().currentAccount,"media")
+		if status and get_app().prefs.earcon_audio:
+			# Get the actual status (unwrap boosts)
+			status_to_check = status.reblog if hasattr(status, 'reblog') and status.reblog else status
+			# Check for pinned post
+			if getattr(status_to_check, 'pinned', False):
+				sound.play(get_app().currentAccount, "pinned")
+			# Check for poll
+			if getattr(status_to_check, 'poll', None):
+				sound.play(get_app().currentAccount, "poll")
+			# Check for media attachments (image vs other media)
+			earcon_type = sound.get_media_type_for_earcon(status_to_check)
+			if earcon_type:
+				sound.play(get_app().currentAccount, earcon_type)
+			# Fall back to URL-based media detection
+			elif len(sound.get_media_urls(get_app().find_urls_in_status(status))) > 0:
+				sound.play(get_app().currentAccount, "media")
 
 	def onRefresh(self,event=None):
 		threading.Thread(target=get_app().currentAccount.currentTimeline.load, daemon=True).start()

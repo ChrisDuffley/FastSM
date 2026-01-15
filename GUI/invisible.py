@@ -73,11 +73,28 @@ class invisible_interface(object):
 					item = item.last_status
 				else:
 					item = None
+			# Handle notifications - get the status from the notification
+			elif get_app().currentAccount.currentTimeline.type == "notifications":
+				if hasattr(item, 'status') and item.status:
+					item = item.status
+				else:
+					item = None
 			if item and get_app().prefs.earcon_audio:
-				# Check for audio attachments or audio URLs in post
-				has_audio = sound.has_audio_attachment(item) or len(sound.get_media_urls(get_app().find_urls_in_status(item))) > 0
-				if has_audio:
-					sound.play(get_app().currentAccount,"media")
+				# Get the actual status (unwrap boosts)
+				status_to_check = item.reblog if hasattr(item, 'reblog') and item.reblog else item
+				# Check for pinned post
+				if getattr(status_to_check, 'pinned', False):
+					sound.play(get_app().currentAccount, "pinned")
+				# Check for poll
+				if getattr(status_to_check, 'poll', None):
+					sound.play(get_app().currentAccount, "poll")
+				# Check for media attachments (image vs other media)
+				earcon_type = sound.get_media_type_for_earcon(status_to_check)
+				if earcon_type:
+					sound.play(get_app().currentAccount, earcon_type)
+				# Fall back to URL-based media detection
+				elif len(sound.get_media_urls(get_app().find_urls_in_status(item))) > 0:
+					sound.play(get_app().currentAccount, "media")
 		self.speak_item()
 
 	def speak_item(self):

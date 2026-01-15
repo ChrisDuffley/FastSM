@@ -291,6 +291,7 @@ def bluesky_post_to_universal(post, author=None, platform_data=None) -> Optional
                 spoiler_text=None,
                 card=None,
                 poll=None,
+                pinned=False,
                 _platform_data=platform_data or post,
                 _platform='bluesky',
             )
@@ -426,6 +427,7 @@ def bluesky_post_to_universal(post, author=None, platform_data=None) -> Optional
         spoiler_text=None,  # Bluesky uses labels instead
         card=None,  # Could extract external embeds
         poll=None,  # Bluesky doesn't have polls
+        pinned=False,  # Bluesky handles pinned differently
         _platform_data=platform_data or post,
         _platform='bluesky',
     )

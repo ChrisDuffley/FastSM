@@ -58,6 +58,35 @@ def has_audio_attachment(status):
 			return True
 	return False
 
+def has_image_attachment(status):
+	"""Check if a status has an image attachment."""
+	media_attachments = getattr(status, 'media_attachments', []) or []
+	for attachment in media_attachments:
+		media_type = getattr(attachment, 'type', '') or ''
+		if media_type.lower() == 'image':
+			return True
+	return False
+
+def get_media_type_for_earcon(status):
+	"""Get the appropriate earcon type for a status's media.
+	Returns 'image' for images, 'media' for other media types, None if no media."""
+	media_attachments = getattr(status, 'media_attachments', []) or []
+	has_image = False
+	has_other_media = False
+	for attachment in media_attachments:
+		media_type = getattr(attachment, 'type', '') or ''
+		media_type = media_type.lower()
+		if media_type == 'image':
+			has_image = True
+		elif media_type in ('video', 'gifv', 'audio'):
+			has_other_media = True
+	# Prioritize image sound if there are images
+	if has_image:
+		return 'image'
+	elif has_other_media:
+		return 'media'
+	return None
+
 def _cleanup_finished_handles():
 	"""Remove handles that have finished playing."""
 	global handles

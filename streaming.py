@@ -47,8 +47,11 @@ class MastodonStreamListener(StreamListener):
 	def on_notification(self, notification):
 		"""Called when a new notification arrives"""
 		try:
-			# Add to notifications timeline (but not mentions - they have their own timeline)
-			if notification.type != "mention":
+			# Check if mentions should be included in notifications
+			include_mentions = getattr(self.account.prefs, 'mentions_in_notifications', False)
+
+			# Add to notifications timeline (mentions only if setting enabled)
+			if notification.type != "mention" or include_mentions:
 				uni_notif = mastodon_notification_to_universal(notification)
 				if uni_notif:
 					for tl in self.account.timelines:

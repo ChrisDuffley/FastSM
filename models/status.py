@@ -50,6 +50,7 @@ class UniversalStatus:
     spoiler_text: Optional[str] = None  # Mastodon content warning
     card: Optional[Any] = None  # Link preview card
     poll: Optional[Any] = None
+    pinned: bool = False  # Whether post is pinned to user's profile
     quote_approval: Optional[Any] = None  # Mastodon 4.5+: QuoteApproval object
 
     # Original platform object for fallback

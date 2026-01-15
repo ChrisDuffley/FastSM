@@ -315,6 +315,8 @@ class timeline(object):
 				sound.play(self.account, "search")
 			elif self.type == "list":
 				sound.play(self.account, "list")
+			elif self.type == "notifications":
+				sound.play(self.account, "notification")
 			else:
 				sound.play(self.account, self.name)
 

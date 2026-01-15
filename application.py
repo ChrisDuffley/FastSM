@@ -1,5 +1,4 @@
 import sys
-import shutil
 import platform
 import os
 import pickle
@@ -95,39 +94,6 @@ class Application:
 			try:
 				f = open(self.confpath + "/errors.log", "a")
 				sys.stderr = f
-			except:
-				pass
-
-		# Only copy default sounds if they don't exist or app version changed
-		sounds_version_file = self.confpath + "/sounds/.version"
-		sounds_need_update = False
-		if not os.path.exists(self.confpath + "/sounds/default"):
-			sounds_need_update = True
-		elif os.path.exists(sounds_version_file):
-			try:
-				with open(sounds_version_file, 'r') as f:
-					if f.read().strip() != version:
-						sounds_need_update = True
-			except:
-				sounds_need_update = True
-		else:
-			# No version file - assume needs update for safety
-			sounds_need_update = True
-
-		if sounds_need_update:
-			if os.path.exists(self.confpath + "/sounds/default"):
-				shutil.rmtree(self.confpath + "/sounds/default")
-			if not os.path.exists(self.confpath + "/sounds"):
-				os.makedirs(self.confpath + "/sounds")
-			# Check local sounds first, then fall back to bundled app path on Mac
-			if os.path.exists("sounds/default"):
-				shutil.copytree("sounds/default", self.confpath + "/sounds/default")
-			elif platform.system() == "Darwin" and os.path.exists("/applications/fastsm.app/sounds/default"):
-				shutil.copytree("/applications/fastsm.app/sounds/default", self.confpath + "/sounds/default")
-			# Write version file
-			try:
-				with open(sounds_version_file, 'w') as f:
-					f.write(version)
 			except:
 				pass
 
