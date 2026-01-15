@@ -103,6 +103,12 @@ class invisible_interface(object):
 			get_app().currentAccount.currentIndex=0
 		self.focus_tl(sync)
 
+	def prev_account(self):
+		main.window.OnPrevAccount()
+
+	def next_account(self):
+		main.window.OnNextAccount()
+
 	def prev_item(self):
 		if get_app().currentAccount.currentTimeline.index==0 or len(get_app().currentAccount.currentTimeline.statuses)==0:
 			sound.play(get_app().currentAccount,"boundary")
@@ -192,15 +198,37 @@ class invisible_interface(object):
 	def FilterTimeline(self):
 		main.window.OnFilterTimeline()
 
-	def Follow(self):
-		status = main.window.get_current_status()
-		if status:
-			misc.follow(get_app().currentAccount, status)
+	def FollowToggle(self):
+		"""Toggle follow state for a user."""
+		main.window.OnFollowToggle()
 
-	def Unfollow(self):
-		status = main.window.get_current_status()
-		if status:
-			misc.unfollow(get_app().currentAccount, status)
+	def MuteToggle(self):
+		"""Toggle mute state for a user."""
+		main.window.OnMuteToggle()
+
+	def BlockToggle(self):
+		"""Toggle block state for a user."""
+		main.window.OnBlockToggle()
+
+	def LikeToggle(self):
+		"""Toggle favourite/like state for a post."""
+		main.window.OnLikeToggle()
+
+	def BoostToggle(self):
+		"""Toggle boost/retweet state for a post."""
+		main.window.OnBoostToggle()
+
+	def BookmarkToggle(self):
+		"""Toggle bookmark state for a post."""
+		main.window.OnBookmarkToggle()
+
+	def NextAccount(self):
+		"""Switch to the next account."""
+		main.window.OnNextAccount()
+
+	def PrevAccount(self):
+		"""Switch to the previous account."""
+		main.window.OnPrevAccount()
 
 	def PinToggle(self):
 		status = main.window.get_current_status()

@@ -49,40 +49,33 @@ class mastodon(object):
 		# Check platform type - this determines which auth flow to use
 		self.prefs.platform_type = self.prefs.get("platform_type", "")
 
-		# Legacy prefs (shared across platforms)
+		# Timeline preferences (shared across platforms)
 		self.prefs.user_timelines = self.prefs.get("user_timelines", [])
 		self.prefs.list_timelines = self.prefs.get("list_timelines", [])
 		self.prefs.search_timelines = self.prefs.get("search_timelines", [])
-		self.prefs.custom_timelines = self.prefs.get("custom_timelines", [])  # [{type, id, name}, ...]
-		self.prefs.instance_timelines = self.prefs.get("instance_timelines", [])  # [{url, name}, ...]
-		self.prefs.remote_user_timelines = self.prefs.get("remote_user_timelines", [])  # [{url, username, name}, ...]
+		self.prefs.custom_timelines = self.prefs.get("custom_timelines", [])
+		self.prefs.instance_timelines = self.prefs.get("instance_timelines", [])
+		self.prefs.remote_user_timelines = self.prefs.get("remote_user_timelines", [])
 
 		# Remote API instances for instance timelines (unauthenticated)
 		self.remote_apis = {}
 		self.prefs.footer = self.prefs.get("footer", "")
 		self.prefs.soundpack = self.prefs.get("soundpack", "default")
 		self.prefs.soundpan = self.prefs.get("soundpan", 0)
+		self.prefs.mentions_in_notifications = self.prefs.get("mentions_in_notifications", False)
 
-		# If no platform type set, check if this is a legacy Mastodon account
+		# Determine platform type if not set
 		if self.prefs.platform_type == "":
-			# Check for existing Mastodon credentials (legacy account migration)
-			existing_instance = self.prefs.get("instance_url", "")
-			existing_token = self.prefs.get("access_token", "")
-			if existing_instance != "" or existing_token != "":
-				# This is an existing Mastodon account - set type automatically
-				self.prefs.platform_type = "mastodon"
-			else:
-				# Truly new account - ask user which platform
-				selected = select_platform(main.window)
-				if selected is None:
-					sys.exit()
-				self.prefs.platform_type = selected
+			# New account - ask user which platform
+			selected = select_platform(main.window)
+			if selected is None:
+				sys.exit()
+			self.prefs.platform_type = selected
 
 		# Initialize based on platform type
 		if self.prefs.platform_type == "bluesky":
 			self._init_bluesky(index)
 		else:
-			# Default to Mastodon (including legacy accounts)
 			self.prefs.platform_type = "mastodon"
 			self._init_mastodon(index)
 
@@ -518,9 +511,6 @@ class mastodon(object):
 
 		return following
 
-	# Alias for backwards compatibility
-	def friends(self, id):
-		return self.following(id)
 
 	def mutual_following(self):
 		followers = self.followers(self.me.id)
@@ -561,9 +551,6 @@ class mastodon(object):
 					users.append(i)
 		return users
 
-	# Alias for backwards compatibility
-	def havent_tweeted(self):
-		return self.havent_posted()
 
 	def list_timelines(self, hidden=False):
 		tl = []
@@ -607,9 +594,6 @@ class mastodon(object):
 			speak.speak(str(e))
 			return False
 
-	# Alias for backwards compatibility
-	def tweet(self, text, id=None, **kwargs):
-		return self.post(text, id, **kwargs)
 
 	def boost(self, id):
 		"""Boost (reblog) a status"""
@@ -617,10 +601,6 @@ class mastodon(object):
 		if hasattr(self, '_platform') and self._platform:
 			return self._platform.boost(id)
 		self.api.status_reblog(id=id)
-
-	# Alias for backwards compatibility
-	def retweet(self, id):
-		self.boost(id)
 
 	def quote(self, status, text, visibility=None):
 		"""Quote a status - try native quote, fallback to URL"""
@@ -677,13 +657,6 @@ class mastodon(object):
 		if hasattr(self, '_platform') and self._platform:
 			return self._platform.unfavourite(id)
 		self.api.status_unfavourite(id=id)
-
-	# Aliases for backwards compatibility
-	def like(self, id):
-		self.favourite(id)
-
-	def unlike(self, id):
-		self.unfavourite(id)
 
 	def follow(self, user_id):
 		"""Follow a user by ID or acct"""

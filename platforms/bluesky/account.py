@@ -33,7 +33,6 @@ class BlueskyAccount(PlatformAccount):
         super().__init__(app, index)
         self.client = client
         self._me = bluesky_profile_to_universal(profile)
-        self._raw_me = profile
         self.confpath = confpath
         self._max_chars = 300  # Bluesky character limit
 

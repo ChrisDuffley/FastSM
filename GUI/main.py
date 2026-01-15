@@ -44,8 +44,8 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.OnServerFilters, m_server_filters)
 		m_followers = menu.Append(-1, "List Followers\tCtrl+[", "followers")
 		self.Bind(wx.EVT_MENU, self.OnFollowers, m_followers)
-		m_friends = menu.Append(-1, "List Following\tCtrl+]", "following")
-		self.Bind(wx.EVT_MENU, self.OnFriends, m_friends)
+		m_following = menu.Append(-1, "List Following\tCtrl+]", "following")
+		self.Bind(wx.EVT_MENU, self.OnFollowing, m_following)
 		m_options = menu.Append(wx.ID_PREFERENCES, "Global Options\tCtrl+,", "options")
 		self.Bind(wx.EVT_MENU, self.OnOptions, m_options)
 		m_account_options = menu.Append(-1, "Account options\tCtrl+Shift+,", "account_options")
@@ -60,17 +60,15 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.OnReply, m_reply)
 		m_edit = menu2.Append(-1, "Edit\tCtrl+E", "edit")
 		self.Bind(wx.EVT_MENU, self.OnEdit, m_edit)
-		m_retweet = menu2.Append(-1, "Boost\tCtrl+Shift+R", "boost")
-		self.Bind(wx.EVT_MENU, self.OnRetweet, m_retweet)
+		m_retweet = menu2.Append(-1, "Boost/Unboost\tCtrl+Shift+R", "boost")
+		self.Bind(wx.EVT_MENU, self.OnBoostToggle, m_retweet)
 		if platform.system()=="Darwin":
 			m_quote = menu2.Append(-1, "Quote\tAlt+Q", "quote")
 		else:
 			m_quote = menu2.Append(-1, "Quote\tCtrl+Q", "quote")
 		self.Bind(wx.EVT_MENU, self.OnQuote, m_quote)
-		m_like=menu2.Append(-1, "Like\tCtrl+K", "favourite")
-		self.Bind(wx.EVT_MENU, self.OnLike, m_like)
-		m_unlike=menu2.Append(-1, "Unlike\tCtrl+Shift+K", "unfavourite")
-		self.Bind(wx.EVT_MENU, self.OnUnlike, m_unlike)
+		m_like=menu2.Append(-1, "Like/Unlike\tCtrl+K", "favourite")
+		self.Bind(wx.EVT_MENU, self.OnLikeToggle, m_like)
 		m_url=menu2.Append(-1, "Open URL\tCtrl+O", "url")
 		self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
 		m_tweet_url=menu2.Append(-1, "Open URL of Post\tCtrl+Shift+O", "post_url")
@@ -81,22 +79,16 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onCopy, m_copy)
 		m_message=menu2.Append(-1, "Send message\tCtrl+D", "message")
 		self.Bind(wx.EVT_MENU, self.OnMessage, m_message)
-		m_follow=menu2.Append(-1, "Follow\tCtrl+L", "follow")
-		self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
-		m_unfollow=menu2.Append(-1, "Unfollow\tCtrl+Shift+L", "follow")
-		self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
+		m_follow=menu2.Append(-1, "Follow/Unfollow\tCtrl+L", "follow")
+		self.Bind(wx.EVT_MENU, self.OnFollowToggle, m_follow)
 		m_add_to_list=menu2.Append(-1, "Add to list\tCtrl+I", "addlist")
 		self.Bind(wx.EVT_MENU, self.OnAddToList, m_add_to_list)
 		m_remove_from_list=menu2.Append(-1, "Remove from list\tCtrl+Shift+I", "removelist")
 		self.Bind(wx.EVT_MENU, self.OnRemoveFromList, m_remove_from_list)
-		m_block=menu2.Append(-1, "Block\tCtrl+B", "block")
-		self.Bind(wx.EVT_MENU, self.OnBlock, m_block)
-		m_unblock=menu2.Append(-1, "Unblock\tCtrl+Shift+B", "unblock")
-		self.Bind(wx.EVT_MENU, self.OnUnblock, m_unblock)
-		m_mute_user=menu2.Append(-1, "Mute", "mute")
-		self.Bind(wx.EVT_MENU, self.OnMuteUser, m_mute_user)
-		m_unmute_user=menu2.Append(-1, "Unmute", "unmute")
-		self.Bind(wx.EVT_MENU, self.OnUnmuteUser, m_unmute_user)
+		m_block=menu2.Append(-1, "Block/Unblock\tCtrl+B", "block")
+		self.Bind(wx.EVT_MENU, self.OnBlockToggle, m_block)
+		m_mute_user=menu2.Append(-1, "Mute/Unmute user", "mute")
+		self.Bind(wx.EVT_MENU, self.OnMuteToggle, m_mute_user)
 		m_view=menu2.Append(-1, "View post" if platform.system() == "Darwin" else "View post\tReturn", "view")
 		self.Bind(wx.EVT_MENU, self.OnView, m_view)
 		m_user_profile=menu2.Append(-1, "User Profile\tCtrl+Shift+U", "profile")
@@ -116,7 +108,7 @@ class MainGui(wx.Frame):
 		m_not_following_me=menu7.Append(-1, "View users who I follow that do not follow me", "conversation")
 		self.Bind(wx.EVT_MENU, self.OnNotFollowingMe, m_not_following_me)
 		m_havent_posted=menu7.Append(-1, "View users who I follow that haven't posted in a year", "conversation")
-		self.Bind(wx.EVT_MENU, self.OnHaventTweeted, m_havent_posted)
+		self.Bind(wx.EVT_MENU, self.OnHaventPosted, m_havent_posted)
 		self.menuBar.Append(menu7, "U&sers")
 		menu3 = wx.Menu()
 		m_refresh = menu3.Append(-1, "Refresh timeline\tF5", "refresh")
@@ -169,6 +161,10 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.OnNextTimeline, m_next_timeline)
 		m_prev_timeline = menu5.Append(-1, "Previous timeline\tAlt+Left", "prevtl")
 		self.Bind(wx.EVT_MENU, self.OnPrevTimeline, m_prev_timeline)
+		m_next_account = menu5.Append(-1, "Next account\tCtrl+Shift+Right", "nextacc")
+		self.Bind(wx.EVT_MENU, self.OnNextAccount, m_next_account)
+		m_prev_account = menu5.Append(-1, "Previous account\tCtrl+Shift+Left", "prevacc")
+		self.Bind(wx.EVT_MENU, self.OnPrevAccount, m_prev_account)
 		self.menuBar.Append(menu5, "Navigation")
 		menu6 = wx.Menu()
 		m_readme = menu6.Append(-1, "Readme\tF1", "readme")
@@ -389,6 +385,44 @@ class MainGui(wx.Frame):
 	def OnPrevTimeline(self,event=None):
 		invisible.inv.prev_tl(True)
 
+	def _get_account_display_name(self, account):
+		"""Get display name for an account, including instance for Mastodon."""
+		acct = getattr(account.me, 'acct', 'Unknown')
+		platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+		if platform_type == 'mastodon' and hasattr(account, 'api') and hasattr(account.api, 'api_base_url'):
+			from urllib.parse import urlparse
+			parsed = urlparse(account.api.api_base_url)
+			instance = parsed.netloc or parsed.path.strip('/')
+			if instance:
+				acct = f"{acct} on {instance}"
+		return acct
+
+	def OnNextAccount(self, event=None):
+		"""Switch to the next account."""
+		app = get_app()
+		if len(app.accounts) <= 1:
+			speak.speak("Only one account")
+			return
+		current_index = app.accounts.index(app.currentAccount)
+		next_index = (current_index + 1) % len(app.accounts)
+		app.currentAccount = app.accounts[next_index]
+		self.refreshTimelines()
+		self.refreshList()
+		speak.speak(self._get_account_display_name(app.currentAccount))
+
+	def OnPrevAccount(self, event=None):
+		"""Switch to the previous account."""
+		app = get_app()
+		if len(app.accounts) <= 1:
+			speak.speak("Only one account")
+			return
+		current_index = app.accounts.index(app.currentAccount)
+		prev_index = (current_index - 1) % len(app.accounts)
+		app.currentAccount = app.accounts[prev_index]
+		self.refreshTimelines()
+		self.refreshList()
+		speak.speak(self._get_account_display_name(app.currentAccount))
+
 	def OnNextFromUser(self,event=None):
 		misc.next_from_user(get_app().currentAccount)
 
@@ -453,7 +487,7 @@ class MainGui(wx.Frame):
 	def OnFollowers(self,event=None):
 		misc.followers(get_app().currentAccount)
 
-	def OnFriends(self,event=None):
+	def OnFollowing(self,event=None):
 		misc.following(get_app().currentAccount)
 
 	def OnMutualFollowing(self,event=None):
@@ -465,8 +499,8 @@ class MainGui(wx.Frame):
 	def OnNotFollowingMe(self,event=None):
 		misc.not_following_me(get_app().currentAccount)
 
-	def OnHaventTweeted(self,event=None):
-		misc.havent_tweeted(get_app().currentAccount)
+	def OnHaventPosted(self,event=None):
+		misc.havent_posted(get_app().currentAccount)
 
 	def refreshList(self):
 		stuffage=get_app().currentAccount.currentTimeline.get()
@@ -551,17 +585,38 @@ class MainGui(wx.Frame):
 
 			menu.AppendSeparator()
 
-			m_follow = menu.Append(-1, "Follow")
-			self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
+			# Get relationship state for conversation participants
+			is_following = False
+			is_muting = False
+			is_blocking = False
+			try:
+				# Get first participant that isn't us
+				if hasattr(item, 'accounts') and item.accounts:
+					for acc in item.accounts:
+						if str(acc.id) != str(get_app().currentAccount.me.id):
+							user_id = acc.id
+							break
+					else:
+						user_id = None
+					if user_id:
+						account = get_app().currentAccount
+						relationships = account.api.account_relationships([user_id])
+						if relationships and len(relationships) > 0:
+							rel = relationships[0]
+							is_following = getattr(rel, 'following', False)
+							is_muting = getattr(rel, 'muting', False)
+							is_blocking = getattr(rel, 'blocking', False)
+			except:
+				pass
 
-			m_unfollow = menu.Append(-1, "Unfollow")
-			self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
+			m_follow = menu.Append(-1, "Unfollow" if is_following else "Follow")
+			self.Bind(wx.EVT_MENU, self.OnFollowToggle, m_follow)
 
-			m_mute = menu.Append(-1, "Mute user")
-			self.Bind(wx.EVT_MENU, self.OnMuteUser, m_mute)
+			m_mute = menu.Append(-1, "Unmute user" if is_muting else "Mute user")
+			self.Bind(wx.EVT_MENU, self.OnMuteToggle, m_mute)
 
-			m_unmute = menu.Append(-1, "Unmute user")
-			self.Bind(wx.EVT_MENU, self.OnUnmuteUser, m_unmute)
+			m_block = menu.Append(-1, "Unblock user" if is_blocking else "Block user")
+			self.Bind(wx.EVT_MENU, self.OnBlockToggle, m_block)
 
 		elif tl_type == "notifications":
 			# Check notification type
@@ -585,8 +640,19 @@ class MainGui(wx.Frame):
 
 				menu.AppendSeparator()
 
-				m_block = menu.Append(-1, "Block user")
-				self.Bind(wx.EVT_MENU, self.OnBlockUser, m_block)
+				# Get relationship state
+				is_blocking = False
+				try:
+					if hasattr(item, 'account'):
+						account = get_app().currentAccount
+						relationships = account.api.account_relationships([item.account.id])
+						if relationships and len(relationships) > 0:
+							is_blocking = getattr(relationships[0], 'blocking', False)
+				except:
+					pass
+
+				m_block = menu.Append(-1, "Unblock user" if is_blocking else "Block user")
+				self.Bind(wx.EVT_MENU, self.OnBlockToggle, m_block)
 
 			elif notif_type == 'follow':
 				# Follow notifications - user-focused options only
@@ -598,38 +664,66 @@ class MainGui(wx.Frame):
 
 				menu.AppendSeparator()
 
-				m_follow = menu.Append(-1, "Follow back")
-				self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
+				# Get relationship state
+				is_following = False
+				is_muting = False
+				is_blocking = False
+				try:
+					if hasattr(item, 'account'):
+						account = get_app().currentAccount
+						relationships = account.api.account_relationships([item.account.id])
+						if relationships and len(relationships) > 0:
+							rel = relationships[0]
+							is_following = getattr(rel, 'following', False)
+							is_muting = getattr(rel, 'muting', False)
+							is_blocking = getattr(rel, 'blocking', False)
+				except:
+					pass
 
-				m_unfollow = menu.Append(-1, "Unfollow")
-				self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
+				m_follow = menu.Append(-1, "Unfollow" if is_following else "Follow")
+				self.Bind(wx.EVT_MENU, self.OnFollowToggle, m_follow)
 
-				menu.AppendSeparator()
+				m_mute = menu.Append(-1, "Unmute user" if is_muting else "Mute user")
+				self.Bind(wx.EVT_MENU, self.OnMuteToggle, m_mute)
 
-				m_mute = menu.Append(-1, "Mute user")
-				self.Bind(wx.EVT_MENU, self.OnMuteUser, m_mute)
-
-				m_unmute = menu.Append(-1, "Unmute user")
-				self.Bind(wx.EVT_MENU, self.OnUnmuteUser, m_unmute)
-
-				m_block = menu.Append(-1, "Block user")
-				self.Bind(wx.EVT_MENU, self.OnBlockUser, m_block)
-
-				m_unblock = menu.Append(-1, "Unblock user")
-				self.Bind(wx.EVT_MENU, self.OnUnblockUser, m_unblock)
+				m_block = menu.Append(-1, "Unblock user" if is_blocking else "Block user")
+				self.Bind(wx.EVT_MENU, self.OnBlockToggle, m_block)
 			else:
 				# Notifications with posts (favourite, reblog, mention, etc.)
+				notif_status = getattr(item, 'status', None)
+				is_favourited = getattr(notif_status, 'favourited', False) if notif_status else False
+				is_reblogged = getattr(notif_status, 'reblogged', False) if notif_status else False
+				is_bookmarked = getattr(notif_status, 'bookmarked', False) if notif_status else False
+				platform_type = getattr(get_app().currentAccount.prefs, 'platform_type', 'mastodon')
+
+				# Check for poll in notification status - show at top of menu
+				if notif_status:
+					poll = getattr(notif_status, 'poll', None)
+					if poll:
+						is_expired = getattr(poll, 'expired', False)
+						has_voted = getattr(poll, 'voted', False)
+						if is_expired or has_voted:
+							m_poll = menu.Append(-1, "View poll results")
+						else:
+							m_poll = menu.Append(-1, "Vote in poll")
+						self.Bind(wx.EVT_MENU, self.OnVotePoll, m_poll)
+						menu.AppendSeparator()
+
 				m_view = menu.Append(-1, "View post")
 				self.Bind(wx.EVT_MENU, self.OnView, m_view)
 
 				m_reply = menu.Append(-1, "Reply")
 				self.Bind(wx.EVT_MENU, self.OnReply, m_reply)
 
-				m_boost = menu.Append(-1, "Boost")
-				self.Bind(wx.EVT_MENU, self.OnRetweet, m_boost)
+				m_boost = menu.Append(-1, "Unboost" if is_reblogged else "Boost")
+				self.Bind(wx.EVT_MENU, self.OnBoostToggle, m_boost)
 
-				m_fav = menu.Append(-1, "Favourite")
-				self.Bind(wx.EVT_MENU, self.OnLike, m_fav)
+				m_fav = menu.Append(-1, "Unfavourite" if is_favourited else "Favourite")
+				self.Bind(wx.EVT_MENU, self.OnLikeToggle, m_fav)
+
+				if platform_type == 'mastodon':
+					m_bookmark = menu.Append(-1, "Remove bookmark" if is_bookmarked else "Bookmark")
+					self.Bind(wx.EVT_MENU, self.OnBookmarkToggle, m_bookmark)
 
 				menu.AppendSeparator()
 
@@ -655,28 +749,70 @@ class MainGui(wx.Frame):
 
 				menu.AppendSeparator()
 
-				m_follow = menu.Append(-1, "Follow")
-				self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
+				# Get relationship state for the notification actor
+				is_following = False
+				is_muting = False
+				is_blocking = False
+				try:
+					user_id = item.account.id if hasattr(item, 'account') else (notif_status.account.id if notif_status else None)
+					if user_id:
+						account = get_app().currentAccount
+						relationships = account.api.account_relationships([user_id])
+						if relationships and len(relationships) > 0:
+							rel = relationships[0]
+							is_following = getattr(rel, 'following', False)
+							is_muting = getattr(rel, 'muting', False)
+							is_blocking = getattr(rel, 'blocking', False)
+				except:
+					pass
 
-				m_unfollow = menu.Append(-1, "Unfollow")
-				self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
+				m_follow = menu.Append(-1, "Unfollow" if is_following else "Follow")
+				self.Bind(wx.EVT_MENU, self.OnFollowToggle, m_follow)
+
+				m_mute = menu.Append(-1, "Unmute user" if is_muting else "Mute user")
+				self.Bind(wx.EVT_MENU, self.OnMuteToggle, m_mute)
+
+				m_block = menu.Append(-1, "Unblock user" if is_blocking else "Block user")
+				self.Bind(wx.EVT_MENU, self.OnBlockToggle, m_block)
 
 		else:
 			# Standard post menu for all other timelines
+			status_to_check = item.reblog if hasattr(item, 'reblog') and item.reblog else item
+			is_favourited = getattr(status_to_check, 'favourited', False)
+			is_reblogged = getattr(status_to_check, 'reblogged', False)
+			is_bookmarked = getattr(status_to_check, 'bookmarked', False)
+			platform_type = getattr(get_app().currentAccount.prefs, 'platform_type', 'mastodon')
+
+			# Check for poll first - show at top of menu
+			poll = getattr(status_to_check, 'poll', None)
+			if poll:
+				is_expired = getattr(poll, 'expired', False)
+				has_voted = getattr(poll, 'voted', False)
+				if is_expired or has_voted:
+					m_poll = menu.Append(-1, "View poll results")
+				else:
+					m_poll = menu.Append(-1, "Vote in poll")
+				self.Bind(wx.EVT_MENU, self.OnVotePoll, m_poll)
+				menu.AppendSeparator()
+
 			m_view = menu.Append(-1, "View post")
 			self.Bind(wx.EVT_MENU, self.OnView, m_view)
 
 			m_reply = menu.Append(-1, "Reply")
 			self.Bind(wx.EVT_MENU, self.OnReply, m_reply)
 
-			m_boost = menu.Append(-1, "Boost")
-			self.Bind(wx.EVT_MENU, self.OnRetweet, m_boost)
+			m_boost = menu.Append(-1, "Unboost" if is_reblogged else "Boost")
+			self.Bind(wx.EVT_MENU, self.OnBoostToggle, m_boost)
 
 			m_quote = menu.Append(-1, "Quote")
 			self.Bind(wx.EVT_MENU, self.OnQuote, m_quote)
 
-			m_fav = menu.Append(-1, "Favourite")
-			self.Bind(wx.EVT_MENU, self.OnLike, m_fav)
+			m_fav = menu.Append(-1, "Unfavourite" if is_favourited else "Favourite")
+			self.Bind(wx.EVT_MENU, self.OnLikeToggle, m_fav)
+
+			if platform_type == 'mastodon':
+				m_bookmark = menu.Append(-1, "Remove bookmark" if is_bookmarked else "Bookmark")
+				self.Bind(wx.EVT_MENU, self.OnBookmarkToggle, m_bookmark)
 
 			menu.AppendSeparator()
 
@@ -702,17 +838,30 @@ class MainGui(wx.Frame):
 
 			menu.AppendSeparator()
 
-			m_follow = menu.Append(-1, "Follow")
-			self.Bind(wx.EVT_MENU, self.OnFollow, m_follow)
+			# Get relationship state for the post author
+			is_following = False
+			is_muting = False
+			is_blocking = False
+			try:
+				user_id = status_to_check.account.id
+				account = get_app().currentAccount
+				relationships = account.api.account_relationships([user_id])
+				if relationships and len(relationships) > 0:
+					rel = relationships[0]
+					is_following = getattr(rel, 'following', False)
+					is_muting = getattr(rel, 'muting', False)
+					is_blocking = getattr(rel, 'blocking', False)
+			except:
+				pass
 
-			m_unfollow = menu.Append(-1, "Unfollow")
-			self.Bind(wx.EVT_MENU, self.OnUnfollow, m_unfollow)
+			m_follow = menu.Append(-1, "Unfollow" if is_following else "Follow")
+			self.Bind(wx.EVT_MENU, self.OnFollowToggle, m_follow)
 
-			m_mute = menu.Append(-1, "Mute user")
-			self.Bind(wx.EVT_MENU, self.OnMuteUser, m_mute)
+			m_mute = menu.Append(-1, "Unmute user" if is_muting else "Mute user")
+			self.Bind(wx.EVT_MENU, self.OnMuteToggle, m_mute)
 
-			m_unmute = menu.Append(-1, "Unmute user")
-			self.Bind(wx.EVT_MENU, self.OnUnmuteUser, m_unmute)
+			m_block = menu.Append(-1, "Unblock user" if is_blocking else "Block user")
+			self.Bind(wx.EVT_MENU, self.OnBlockToggle, m_block)
 
 			menu.AppendSeparator()
 
@@ -893,11 +1042,6 @@ class MainGui(wx.Frame):
 	# Alias for invisible interface
 	OnPostUrl = OnTweetUrl
 
-	def OnFollow(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.follow(get_app().currentAccount, status)
-
 	def OnAddToList(self, event=None):
 		status = self.get_current_status()
 		if status:
@@ -907,41 +1051,6 @@ class MainGui(wx.Frame):
 		status = self.get_current_status()
 		if status:
 			misc.remove_from_list(get_app().currentAccount, status)
-
-	def OnUnfollow(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.unfollow(get_app().currentAccount, status)
-
-	def OnBlock(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.block(get_app().currentAccount, status)
-
-	def OnUnblock(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.unblock(get_app().currentAccount, status)
-
-	def OnMuteUser(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.mute(get_app().currentAccount, status)
-
-	def OnUnmuteUser(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.unmute(get_app().currentAccount, status)
-
-	def OnBlockUser(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.block(get_app().currentAccount, status)
-
-	def OnUnblockUser(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.unblock(get_app().currentAccount, status)
 
 	def OnAcceptFollowRequest(self, event=None):
 		"""Accept a follow request from the notifications timeline."""
@@ -1069,44 +1178,209 @@ class MainGui(wx.Frame):
 		if status:
 			misc.message(get_app().currentAccount, status)
 
-	def OnRetweet(self, event=None):
-		status = self.get_current_status()
-		if status:
-			misc.boost(get_app().currentAccount, status)
-
-	# Alias for invisible interface
-	OnBoost = OnRetweet
-
-	def OnLike(self, event=None):
+	def OnLikeToggle(self, event=None):
+		"""Toggle favourite/like state for a status."""
 		status = self.get_current_status()
 		if status:
 			account = get_app().currentAccount
 			try:
 				status_id = misc.get_interaction_id(account, status)
-				if not getattr(status, 'favourited', False):
-					account.favourite(status_id)
-					account.app.prefs.favourites_sent += 1
-					status.favourited = True
-					sound.play(account, "like")
-				else:
-					speak.speak("Already liked")
-			except Exception as error:
-				account.app.handle_error(error, "like post")
-
-	def OnUnlike(self, event=None):
-		status = self.get_current_status()
-		if status:
-			account = get_app().currentAccount
-			try:
-				status_id = misc.get_interaction_id(account, status)
-				if getattr(status, 'favourited', False):
+				# Get the actual status for state checking
+				status_to_check = status.reblog if hasattr(status, 'reblog') and status.reblog else status
+				if getattr(status_to_check, 'favourited', False):
 					account.unfavourite(status_id)
-					status.favourited = False
+					status_to_check.favourited = False
 					sound.play(account, "unlike")
 				else:
-					speak.speak("Not liked")
+					account.favourite(status_id)
+					account.app.prefs.favourites_sent += 1
+					status_to_check.favourited = True
+					sound.play(account, "like")
 			except Exception as error:
-				account.app.handle_error(error, "unlike post")
+				account.app.handle_error(error, "toggle favourite")
+
+	def OnBoostToggle(self, event=None):
+		"""Toggle boost/retweet state for a status."""
+		status = self.get_current_status()
+		if status:
+			account = get_app().currentAccount
+			try:
+				status_id = misc.get_interaction_id(account, status)
+				# Get the actual status for state checking
+				status_to_check = status.reblog if hasattr(status, 'reblog') and status.reblog else status
+				if getattr(status_to_check, 'reblogged', False):
+					account.unboost(status_id)
+					status_to_check.reblogged = False
+					sound.play(account, "delete")
+				else:
+					account.boost(status_id)
+					account.app.prefs.boosts_sent += 1
+					status_to_check.reblogged = True
+					sound.play(account, "send_repost")
+			except Exception as error:
+				account.app.handle_error(error, "toggle boost")
+
+	def OnBlockToggle(self, event=None):
+		"""Toggle block state for a user."""
+		status = self.get_current_status()
+		if not status:
+			return
+		account = get_app().currentAccount
+		u = account.app.get_user_objects_in_status(account, status)
+		if not u:
+			speak.speak("No user found")
+			return
+		if len(u) > 1:
+			u2 = [i.acct for i in u]
+			chooser.chooser(account, "Block/Unblock User", "Select user", u2, "block_toggle")
+		else:
+			self._toggle_block_user(account, u[0])
+
+	def _toggle_block_user(self, account, user):
+		"""Toggle block state for a specific user."""
+		try:
+			relationships = account.api.account_relationships([user.id])
+			if relationships and len(relationships) > 0:
+				rel = relationships[0]
+				if getattr(rel, 'blocking', False):
+					account.unblock(user.acct)
+					sound.play(account, "unblock")
+					speak.speak(f"Unblocked {user.acct}")
+				else:
+					account.block(user.acct)
+					sound.play(account, "block")
+					speak.speak(f"Blocked {user.acct}")
+			else:
+				account.block(user.acct)
+				sound.play(account, "block")
+				speak.speak(f"Blocked {user.acct}")
+		except Exception as error:
+			account.app.handle_error(error, "toggle block")
+
+	def OnBookmarkToggle(self, event=None):
+		"""Toggle bookmark state for a status."""
+		status = self.get_current_status()
+		if status:
+			account = get_app().currentAccount
+			platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+			if platform_type == 'bluesky':
+				speak.speak("Bookmarks are not supported on Bluesky")
+				return
+			try:
+				status_id = misc.get_interaction_id(account, status)
+				status_to_check = status.reblog if hasattr(status, 'reblog') and status.reblog else status
+				if getattr(status_to_check, 'bookmarked', False):
+					account.api.status_unbookmark(status_id)
+					status_to_check.bookmarked = False
+					sound.play(account, "unlike")
+					speak.speak("Bookmark removed")
+				else:
+					account.api.status_bookmark(status_id)
+					status_to_check.bookmarked = True
+					sound.play(account, "like")
+					speak.speak("Bookmarked")
+			except Exception as error:
+				account.app.handle_error(error, "toggle bookmark")
+
+	def OnFollowToggle(self, event=None):
+		"""Toggle follow state for a user - checks relationship and follows/unfollows accordingly."""
+		status = self.get_current_status()
+		if not status:
+			return
+		account = get_app().currentAccount
+		# Get user to follow/unfollow
+		u = account.app.get_user_objects_in_status(account, status)
+		if not u:
+			speak.speak("No user found")
+			return
+		# If multiple users, use the chooser
+		if len(u) > 1:
+			u2 = [i.acct for i in u]
+			chooser.chooser(account, "Follow/Unfollow User", "Select user", u2, "follow_toggle")
+		else:
+			# Single user - check relationship and toggle
+			self._toggle_follow_user(account, u[0])
+
+	def _toggle_follow_user(self, account, user):
+		"""Toggle follow state for a specific user."""
+		try:
+			# Check current relationship
+			relationships = account.api.account_relationships([user.id])
+			if relationships and len(relationships) > 0:
+				rel = relationships[0]
+				if getattr(rel, 'following', False):
+					account.unfollow(user.acct)
+					sound.play(account, "unfollow")
+					speak.speak(f"Unfollowed {user.acct}")
+				else:
+					account.follow(user.acct)
+					sound.play(account, "follow")
+					speak.speak(f"Followed {user.acct}")
+			else:
+				# No relationship data, assume not following
+				account.follow(user.acct)
+				sound.play(account, "follow")
+				speak.speak(f"Followed {user.acct}")
+		except Exception as error:
+			account.app.handle_error(error, "toggle follow")
+
+	def OnMuteToggle(self, event=None):
+		"""Toggle mute state for a user - checks relationship and mutes/unmutes accordingly."""
+		status = self.get_current_status()
+		if not status:
+			return
+		account = get_app().currentAccount
+		# Get user to mute/unmute
+		u = account.app.get_user_objects_in_status(account, status)
+		if not u:
+			speak.speak("No user found")
+			return
+		# If multiple users, use the chooser
+		if len(u) > 1:
+			u2 = [i.acct for i in u]
+			chooser.chooser(account, "Mute/Unmute User", "Select user", u2, "mute_toggle")
+		else:
+			# Single user - check relationship and toggle
+			self._toggle_mute_user(account, u[0])
+
+	def _toggle_mute_user(self, account, user):
+		"""Toggle mute state for a specific user."""
+		try:
+			# Check current relationship
+			relationships = account.api.account_relationships([user.id])
+			if relationships and len(relationships) > 0:
+				rel = relationships[0]
+				if getattr(rel, 'muting', False):
+					account.unmute(user.id)
+					sound.play(account, "unmute")
+					speak.speak(f"Unmuted {user.acct}")
+				else:
+					# Use mute dialog for options
+					from . import mute_dialog
+					mute_dialog.show_mute_dialog(account, user)
+			else:
+				# No relationship data, show mute dialog
+				from . import mute_dialog
+				mute_dialog.show_mute_dialog(account, user)
+		except Exception as error:
+			account.app.handle_error(error, "toggle mute")
+
+	def OnVotePoll(self, event=None):
+		"""Open the poll dialog for voting or viewing results."""
+		status = self.get_current_status()
+		if not status:
+			return
+		# Get the actual status (unwrap boosts, get notification status)
+		if hasattr(status, 'status') and status.status:
+			# Notification with a status
+			status_to_check = status.status
+		elif hasattr(status, 'reblog') and status.reblog:
+			status_to_check = status.reblog
+		else:
+			status_to_check = status
+		if hasattr(status_to_check, 'poll') and status_to_check.poll:
+			from . import poll_dialog
+			poll_dialog.show_poll_dialog(get_app().currentAccount, status_to_check)
 
 global window
 window=MainGui(application.name+" "+application.version)

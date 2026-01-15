@@ -349,11 +349,6 @@ def havent_posted(account):
 	flw.Show()
 
 
-# Alias for backwards compatibility
-def havent_tweeted(account):
-	havent_posted(account)
-
-
 def user_timeline_user(account, username, focus=True, filter=None):
 	"""Create a user timeline.
 

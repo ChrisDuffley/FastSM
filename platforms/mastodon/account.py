@@ -32,7 +32,6 @@ class MastodonAccount(PlatformAccount):
         super().__init__(app, index)
         self.api = api
         self._me = mastodon_user_to_universal(me)
-        self._raw_me = me  # Keep original for compatibility
         self.confpath = confpath
         self._max_chars = max_chars
 
@@ -94,9 +93,18 @@ class MastodonAccount(PlatformAccount):
         return statuses
 
     def get_notifications(self, limit: int = 40, **kwargs) -> List[UniversalNotification]:
-        """Get notifications (excludes mentions since they have their own timeline)."""
-        # Exclude mentions - they're shown in the mentions timeline instead
-        notifications = self.api.notifications(limit=limit, exclude_types=['mention'], **kwargs)
+        """Get notifications (optionally excludes mentions based on account setting)."""
+        # Check if mentions should be included in notifications
+        try:
+            include_mentions = self.app.accounts[self.index].prefs.mentions_in_notifications
+        except:
+            include_mentions = False
+
+        if include_mentions:
+            notifications = self.api.notifications(limit=limit, **kwargs)
+        else:
+            # Exclude mentions - they're shown in the mentions timeline instead
+            notifications = self.api.notifications(limit=limit, exclude_types=['mention'], **kwargs)
         result = [mastodon_notification_to_universal(n) for n in notifications if n]
         # Cache users
         for notif in result:

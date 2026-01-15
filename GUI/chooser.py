@@ -12,10 +12,13 @@ class ChooseGui(wx.Dialog):
 
 	#constants for the types we might need to handle
 	TYPE_BLOCK="block"
+	TYPE_BLOCK_TOGGLE="block_toggle"
 	TYPE_FOLLOW="follow"
+	TYPE_FOLLOW_TOGGLE="follow_toggle"
 	TYPE_LIST = "list"
 	TYPE_LIST_R="listr"
 	TYPE_MUTE="mute"
+	TYPE_MUTE_TOGGLE="mute_toggle"
 	TYPE_PROFILE = "profile"
 	TYPE_UNBLOCK="unblock"
 	TYPE_UNFOLLOW="unfollow"
@@ -87,6 +90,67 @@ class ChooseGui(wx.Dialog):
 		elif self.type==self.TYPE_USER_TIMELINE:
 			# Show filter selection dialog for user timelines
 			self._show_filter_dialog(self.returnvalue)
+		elif self.type==self.TYPE_FOLLOW_TOGGLE:
+			# Toggle follow state - check relationship first
+			try:
+				user = self.account.app.lookup_user_name(self.account, self.returnvalue)
+				if user != -1:
+					relationships = self.account.api.account_relationships([user.id])
+					if relationships and len(relationships) > 0:
+						rel = relationships[0]
+						if getattr(rel, 'following', False):
+							self.account.unfollow(self.returnvalue)
+							sound.play(self.account, "unfollow")
+						else:
+							self.account.follow(self.returnvalue)
+							sound.play(self.account, "follow")
+					else:
+						# No relationship data, assume not following
+						self.account.follow(self.returnvalue)
+						sound.play(self.account, "follow")
+			except MastodonError as e:
+				self.account.app.handle_error(e, "Toggle follow")
+		elif self.type==self.TYPE_MUTE_TOGGLE:
+			# Toggle mute state - check relationship first
+			try:
+				user = self.account.app.lookup_user_name(self.account, self.returnvalue)
+				if user != -1:
+					relationships = self.account.api.account_relationships([user.id])
+					if relationships and len(relationships) > 0:
+						rel = relationships[0]
+						if getattr(rel, 'muting', False):
+							self.account.api.account_unmute(id=user.id)
+							sound.play(self.account, "unmute")
+						else:
+							# Use mute dialog for options
+							from . import mute_dialog
+							mute_dialog.show_mute_dialog(self.account, user)
+					else:
+						# No relationship data, show mute dialog
+						from . import mute_dialog
+						mute_dialog.show_mute_dialog(self.account, user)
+			except MastodonError as e:
+				self.account.app.handle_error(e, "Toggle mute")
+		elif self.type==self.TYPE_BLOCK_TOGGLE:
+			# Toggle block state - check relationship first
+			try:
+				user = self.account.app.lookup_user_name(self.account, self.returnvalue)
+				if user != -1:
+					relationships = self.account.api.account_relationships([user.id])
+					if relationships and len(relationships) > 0:
+						rel = relationships[0]
+						if getattr(rel, 'blocking', False):
+							self.account.unblock(self.returnvalue)
+							sound.play(self.account, "unblock")
+						else:
+							self.account.block(self.returnvalue)
+							sound.play(self.account, "block")
+					else:
+						# No relationship data, assume not blocking
+						self.account.block(self.returnvalue)
+						sound.play(self.account, "block")
+			except MastodonError as e:
+				self.account.app.handle_error(e, "Toggle block")
 
 	def _show_filter_dialog(self, username):
 		"""Show a dialog to select filter type for user timelines."""

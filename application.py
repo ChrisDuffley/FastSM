@@ -337,6 +337,43 @@ class Application:
 					else:
 						text += f" ({type_display}) with no description"
 
+			# Add poll information
+			if hasattr(s, 'poll') and s.poll:
+				poll = s.poll
+				is_expired = getattr(poll, 'expired', False)
+				has_voted = getattr(poll, 'voted', False)
+				options = getattr(poll, 'options', [])
+				own_votes = getattr(poll, 'own_votes', []) or []
+				votes_count = getattr(poll, 'votes_count', 0)
+
+				# Build poll status
+				if is_expired:
+					poll_status = "Poll ended"
+				elif has_voted:
+					poll_status = "Poll (voted)"
+				else:
+					poll_status = "Poll"
+
+				# Build options list with vote info
+				option_texts = []
+				for i, opt in enumerate(options):
+					opt_title = getattr(opt, 'title', str(opt))
+					opt_votes = getattr(opt, 'votes_count', 0)
+					if is_expired or has_voted:
+						# Show results
+						if votes_count > 0:
+							pct = (opt_votes / votes_count) * 100
+							opt_text = f"{opt_title}: {pct:.0f}%"
+						else:
+							opt_text = f"{opt_title}: 0%"
+						if i in own_votes:
+							opt_text += " (your vote)"
+					else:
+						opt_text = opt_title
+					option_texts.append(opt_text)
+
+				text += f" ({poll_status}: {', '.join(option_texts)})"
+
 		# Strip quote-related URLs from text when there's a quote
 		if hasattr(s, 'quote') and s.quote:
 			import re
@@ -413,6 +450,23 @@ class Application:
 			status_text = self.strip_html(getattr(status, 'content', ''))
 			if len(status_text) > 100:
 				status_text = status_text[:100] + "..."
+			# Add poll info for notifications with polls
+			if hasattr(status, 'poll') and status.poll:
+				poll = status.poll
+				is_expired = getattr(poll, 'expired', False)
+				options = getattr(poll, 'options', [])
+				votes_count = getattr(poll, 'votes_count', 0)
+				option_texts = []
+				for opt in options:
+					opt_title = getattr(opt, 'title', str(opt))
+					opt_votes = getattr(opt, 'votes_count', 0)
+					if is_expired and votes_count > 0:
+						pct = (opt_votes / votes_count) * 100
+						option_texts.append(f"{opt_title}: {pct:.0f}%")
+					else:
+						option_texts.append(opt_title)
+				poll_label = "Poll ended" if is_expired else "Poll"
+				status_text += f" ({poll_label}: {', '.join(option_texts)})"
 			result = f"{display_name} (@{acct}) {label}: {status_text}"
 		else:
 			result = f"{display_name} (@{acct}) {label}"

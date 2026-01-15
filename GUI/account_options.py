@@ -47,6 +47,15 @@ class general(wx.Panel, wx.Dialog):
 		max_chars = getattr(account, 'max_chars', 500)
 		self.footer.SetMaxLength(max_chars)
 
+		# Mastodon-specific options
+		platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+		if platform_type == 'mastodon':
+			self.mentions_in_notifications = wx.CheckBox(self, -1, "Show mentions in notifications buffer")
+			self.mentions_in_notifications.SetValue(account.prefs.mentions_in_notifications)
+			self.main_box.Add(self.mentions_in_notifications, 0, wx.ALL, 10)
+		else:
+			self.mentions_in_notifications = None
+
 	def OnPan(self,event):
 		pan=self.soundpan.GetValue()/50
 		self.snd.pan=pan
@@ -82,6 +91,27 @@ class OptionsGui(wx.Dialog):
 		self.account.prefs.soundpack=self.general.sp
 		self.account.prefs.soundpan=self.general.soundpan.GetValue()/50
 		self.account.prefs.footer=self.general.footer.GetValue()
+
+		# Handle mentions_in_notifications setting change
+		if self.general.mentions_in_notifications is not None:
+			old_value = self.account.prefs.mentions_in_notifications
+			new_value = self.general.mentions_in_notifications.GetValue()
+			if old_value != new_value:
+				self.account.prefs.mentions_in_notifications = new_value
+				# Clear and reload the notifications timeline
+				import threading
+				for tl in self.account.timelines:
+					if tl.type == "notifications":
+						tl.statuses = []
+						tl.update_kwargs = {}
+						tl.index = 0
+						tl.initial = True
+						if hasattr(tl, '_unfiltered_statuses'):
+							tl._unfiltered_statuses = []
+						# Reload in background
+						threading.Thread(target=tl.load, daemon=True).start()
+						break
+
 		self.general.snd.free()
 		self.Destroy()
 
