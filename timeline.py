@@ -4,6 +4,7 @@ import speak
 import sound
 import threading
 import os
+import wx
 from GUI import main
 
 
@@ -287,7 +288,7 @@ class timeline(object):
 		if self.app.prefs.reversed:
 			self.statuses.reverse()
 		if self.account.currentTimeline == self:
-			main.window.refreshList()
+			wx.CallAfter(main.window.refreshList)
 		sound.play(self.account, "search")
 		# Notify initial load complete
 		if self.initial:
@@ -616,15 +617,15 @@ class timeline(object):
 				if self.app.currentAccount == self.account and self.account.currentTimeline == self:
 					if not back and not self.initial:
 						if not self.app.prefs.reversed:
-							main.window.add_to_list(self.prepare(objs2))
+							wx.CallAfter(main.window.add_to_list, self.prepare(objs2))
 						else:
 							objs2.reverse()
-							main.window.append_to_list(self.prepare(objs2))
+							wx.CallAfter(main.window.append_to_list, self.prepare(objs2))
 					else:
 						if not self.app.prefs.reversed:
-							main.window.append_to_list(self.prepare(objs2))
+							wx.CallAfter(main.window.append_to_list, self.prepare(objs2))
 						else:
-							main.window.add_to_list(self.prepare(objs2))
+							wx.CallAfter(main.window.add_to_list, self.prepare(objs2))
 
 				if items == []:
 					if not self.app.prefs.reversed:
@@ -638,14 +639,14 @@ class timeline(object):
 						self.index += len(objs2)
 						if self.app.currentAccount == self.account and self.account.currentTimeline == self and len(self.statuses) > 0:
 							try:
-								main.window.list2.SetSelection(self.index)
+								wx.CallAfter(main.window.list2.SetSelection, self.index)
 							except:
 								pass
 				if back and self.app.prefs.reversed:
 					# Use filtered count (len(objs2)) for index adjustment, not total newitems
 					self.index += len(objs2)
 					if self.app.currentAccount == self.account and self.account.currentTimeline == self and len(self.statuses) > 0:
-						main.window.list2.SetSelection(self.index)
+						wx.CallAfter(main.window.list2.SetSelection, self.index)
 
 				if self.initial:
 					if not self.app.prefs.reversed:
