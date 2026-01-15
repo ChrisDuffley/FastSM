@@ -8,7 +8,7 @@ from application import get_app
 import wx
 from keyboard_handler.wx_handler import WXKeyboardHandler
 import speak
-from . import account_options, accounts, chooser, custom_timelines, invisible, lists, misc, options, profile, search, timeline_filter, timelines, tray, tweet, view
+from . import account_options, accounts, chooser, custom_timelines, explore_dialog, invisible, lists, misc, options, profile, search, timeline_filter, timelines, tray, tweet, view
 import sound
 import timeline
 import threading
@@ -136,6 +136,8 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.OnSearch, m_search)
 		m_user_search = menu3.Append(-1, "User Search\tCtrl+Shift+/", "search")
 		self.Bind(wx.EVT_MENU, self.OnUserSearch, m_user_search)
+		m_explore = menu3.Append(-1, "E&xplore\tCtrl+Shift+X", "explore")
+		self.Bind(wx.EVT_MENU, self.OnExplore, m_explore)
 		m_find = menu3.Append(-1, "Find in timeline\tF3", "find")
 		self.Bind(wx.EVT_MENU, self.OnFind, m_find)
 		self.m_close_timeline = menu3.Append(-1, "Close timeline\tCtrl+W", "removetimeline")
@@ -937,6 +939,11 @@ class MainGui(wx.Frame):
 	def OnUserSearch(self, event=None):
 		s=search.SearchGui(get_app().currentAccount,"user")
 		s.Show()
+
+	def OnExplore(self, event=None):
+		"""Open the Explore/Discover dialog."""
+		e = explore_dialog.ExploreDialog(get_app().currentAccount)
+		e.Show()
 
 	def OnFind(self, event=None):
 		"""Find text in the current timeline."""

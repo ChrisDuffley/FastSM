@@ -841,3 +841,65 @@ class MastodonAccount(PlatformAccount):
             return True
         except MastodonError:
             return False
+
+    # ============ Explore/Discovery Methods ============
+
+    def get_directory(self, limit: int = 40, order: str = 'active', local: bool = False) -> List[UniversalUser]:
+        """Get profile directory for user discovery.
+
+        Args:
+            limit: Maximum number of users to return (default 40, max 80)
+            order: Sort order - 'active' (most recent posts) or 'new' (recently created)
+            local: Only return local users if True
+        """
+        try:
+            users = self.api.directory(limit=min(limit, 80), order=order, local=local)
+            return self._convert_users(users)
+        except MastodonError:
+            return []
+
+    def get_trending_statuses(self, limit: int = 20) -> List[UniversalStatus]:
+        """Get trending posts."""
+        try:
+            statuses = self.api.trending_statuses(limit=min(limit, 40))
+            return self._convert_statuses(statuses)
+        except MastodonError:
+            return []
+
+    def get_trending_tags(self, limit: int = 20) -> List[dict]:
+        """Get trending hashtags.
+
+        Returns list of dicts with 'name', 'url', and 'history' keys.
+        """
+        try:
+            tags = self.api.trending_tags(limit=min(limit, 20))
+            result = []
+            for tag in tags:
+                result.append({
+                    'name': getattr(tag, 'name', ''),
+                    'url': getattr(tag, 'url', ''),
+                    'history': getattr(tag, 'history', [])
+                })
+            return result
+        except MastodonError:
+            return []
+
+    def get_trending_links(self, limit: int = 20) -> List[dict]:
+        """Get trending links/articles.
+
+        Returns list of dicts with 'title', 'url', 'description', 'author' keys.
+        """
+        try:
+            links = self.api.trending_links(limit=min(limit, 20))
+            result = []
+            for link in links:
+                result.append({
+                    'title': getattr(link, 'title', ''),
+                    'url': getattr(link, 'url', ''),
+                    'description': getattr(link, 'description', ''),
+                    'author_name': getattr(link, 'author_name', ''),
+                    'provider_name': getattr(link, 'provider_name', '')
+                })
+            return result
+        except MastodonError:
+            return []

@@ -883,3 +883,42 @@ class BlueskyAccount(PlatformAccount):
         except (AtProtocolError, InvokeTimeoutError) as e:
             self.app.handle_error(e, "following")
             return []
+
+    # ============ Explore/Discovery Methods ============
+
+    def get_suggested_users(self, limit: int = 50) -> List[UniversalUser]:
+        """Get suggested users to follow."""
+        try:
+            response = self.client.get_suggestions(limit=min(limit, 100))
+            actors = getattr(response, 'actors', [])
+            return self._convert_profiles(actors)
+        except (AtProtocolError, InvokeTimeoutError) as e:
+            self.app.handle_error(e, "suggested users")
+            return []
+
+    def get_suggested_feeds(self, limit: int = 50) -> List[dict]:
+        """Get suggested feeds.
+
+        Returns list of dicts with 'uri', 'name', 'description', 'creator' keys.
+        """
+        try:
+            from atproto import models
+            params = models.AppBskyFeedGetSuggestedFeeds.Params(limit=min(limit, 100))
+            response = self.client.app.bsky.feed.get_suggested_feeds(params)
+            feeds = []
+            for feed in getattr(response, 'feeds', []):
+                feeds.append({
+                    'uri': getattr(feed, 'uri', ''),
+                    'name': getattr(feed, 'display_name', ''),
+                    'description': getattr(feed, 'description', ''),
+                    'creator': getattr(feed.creator, 'handle', '') if hasattr(feed, 'creator') else '',
+                    'likes': getattr(feed, 'like_count', 0)
+                })
+            return feeds
+        except (AtProtocolError, InvokeTimeoutError) as e:
+            self.app.handle_error(e, "suggested feeds")
+            return []
+
+    def get_popular_feeds(self, limit: int = 50, query: str = None) -> List[dict]:
+        """Get popular feeds (wrapper for search_feeds)."""
+        return self.search_feeds(query or '', limit=limit)
