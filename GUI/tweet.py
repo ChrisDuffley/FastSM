@@ -595,4 +595,8 @@ class TweetGui(wx.Dialog):
 			speak.speak("Failed to send post")
 
 	def OnClose(self, event):
+		# On Mac, explicitly reactivate main window to fix menu state
+		if platform.system() == "Darwin":
+			from . import main
+			wx.CallAfter(main.window.Raise)
 		self.Destroy()
