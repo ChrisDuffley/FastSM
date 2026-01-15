@@ -393,6 +393,9 @@ def blocked_users(account):
 	"""List users you have blocked."""
 	try:
 		blocked = list(account.api.blocks(limit=80))
+		if not blocked:
+			speak.speak("No blocked users")
+			return
 		flw = view.UserViewGui(account, blocked, "Blocked users")
 		flw.Show()
 	except Exception as error:
@@ -403,6 +406,9 @@ def muted_users(account):
 	"""List users you have muted."""
 	try:
 		muted = list(account.api.mutes(limit=80))
+		if not muted:
+			speak.speak("No muted users")
+			return
 		flw = view.UserViewGui(account, muted, "Muted users")
 		flw.Show()
 	except Exception as error:
