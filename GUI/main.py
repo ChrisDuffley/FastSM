@@ -200,13 +200,15 @@ class MainGui(wx.Frame):
 			self.SetAcceleratorTable(accel)
 
 		self.list_label=wx.StaticText(self.panel, -1, label="Timelines")
+		self.main_box.Add(self.list_label, 0, wx.LEFT | wx.TOP, 10)
 		self.list=wx.ListBox(self.panel, -1)
-		self.main_box.Add(self.list, 0, wx.ALL, 10)
+		self.main_box.Add(self.list, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 		self.list.Bind(wx.EVT_LISTBOX, self.on_list_change)
 		self.list.SetFocus()
 		self.list2_label=wx.StaticText(self.panel, -1, label="Contents")
+		self.main_box.Add(self.list2_label, 0, wx.LEFT | wx.TOP, 10)
 		self.list2=wx.ListBox(self.panel, -1,size=(1200,800))
-		self.main_box.Add(self.list2, 0, wx.ALL, 10)
+		self.main_box.Add(self.list2, 1, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 		self.list2.Bind(wx.EVT_LISTBOX, self.on_list2_change)
 		self.list2.Bind(wx.EVT_CONTEXT_MENU, self.OnPostContextMenu)
 		# On Mac, bind key events directly to list controls for shortcuts
@@ -217,6 +219,7 @@ class MainGui(wx.Frame):
 			# Use CHAR_HOOK for Option+M since it produces special characters
 			self.list2.Bind(wx.EVT_CHAR_HOOK, self.OnListCharHook)
 			self.list.Bind(wx.EVT_CHAR_HOOK, self.OnListCharHook)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		# Note: theme is applied in FastSM.pyw after prefs are loaded
 
