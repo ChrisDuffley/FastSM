@@ -41,8 +41,9 @@ class ChooseGui(wx.Dialog):
 		self.panel = wx.Panel(self)
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.chooser_label=wx.StaticText(self.panel, -1, title)
+		self.main_box.Add(self.chooser_label, 0, wx.LEFT | wx.TOP, 10)
 		self.chooser=wx.ComboBox(self.panel,-1,size=(800,600))
-		self.main_box.Add(self.chooser, 0, wx.ALL, 10)
+		self.main_box.Add(self.chooser, 0, wx.EXPAND | wx.ALL, 10)
 		self.chooser.SetFocus()
 		for i in list:
 			self.chooser.Insert(i,self.chooser.GetCount())
@@ -54,6 +55,7 @@ class ChooseGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		theme.apply_theme(self)
 

@@ -68,17 +68,19 @@ class ViewGui(wx.Dialog):
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 
 		self.text_label = wx.StaticText(self.panel, -1, "Te&xt")
+		self.main_box.Add(self.text_label, 0, wx.LEFT | wx.TOP, 10)
 		if self.account.app.prefs.wrap:
 			self.text = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE, size=text_box_size)
 		else:
 			self.text = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_DONTWRAP, size=text_box_size)
-		self.main_box.Add(self.text, 0, wx.ALL, 10)
+		self.main_box.Add(self.text, 0, wx.EXPAND | wx.ALL, 10)
 		self.text.SetFocus()
 		self.text.SetValue(self.post_text)
 
 		self.text2_label = wx.StaticText(self.panel, -1, "Post &Details")
+		self.main_box.Add(self.text2_label, 0, wx.LEFT | wx.TOP, 10)
 		self.text2 = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_DONTWRAP, size=text_box_size)
-		self.main_box.Add(self.text2, 0, wx.ALL, 10)
+		self.main_box.Add(self.text2, 0, wx.EXPAND | wx.ALL, 10)
 
 		extra = ""
 		# Handle media attachments
@@ -190,6 +192,7 @@ class ViewGui(wx.Dialog):
 		accel_tbl = wx.AcceleratorTable(accel)
 		self.SetAcceleratorTable(accel_tbl)
 
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		theme.apply_theme(self)
 
@@ -283,8 +286,9 @@ class UserViewGui(wx.Dialog):
 		self.panel = wx.Panel(self)
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.list_label = wx.StaticText(self.panel, -1, label="&Users")
+		self.main_box.Add(self.list_label, 0, wx.LEFT | wx.TOP, 10)
 		self.list = wx.ListBox(self.panel, -1)
-		self.main_box.Add(self.list, 0, wx.ALL, 10)
+		self.main_box.Add(self.list, 0, wx.EXPAND | wx.ALL, 10)
 		self.list.Bind(wx.EVT_LISTBOX, self.on_list_change)
 
 		for i in self.users:
@@ -310,8 +314,9 @@ class UserViewGui(wx.Dialog):
 			self.list.SetFocus()
 
 		self.text_label = wx.StaticText(self.panel, -1, "Info")
+		self.main_box.Add(self.text_label, 0, wx.LEFT | wx.TOP, 10)
 		self.text = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_DONTWRAP, size=text_box_size)
-		self.main_box.Add(self.text, 0, wx.ALL, 10)
+		self.main_box.Add(self.text, 0, wx.EXPAND | wx.ALL, 10)
 		if len(self.users) == 1:
 			self.text.SetFocus()
 
@@ -417,6 +422,7 @@ class UserViewGui(wx.Dialog):
 		]
 		accel_tbl = wx.AcceleratorTable(accel)
 		self.SetAcceleratorTable(accel_tbl)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		theme.apply_theme(self)
 
@@ -697,12 +703,14 @@ class ViewTextGui(wx.Dialog):
 		self.panel = wx.Panel(self)
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.text_label = wx.StaticText(self.panel, -1, "Te&xt")
+		self.main_box.Add(self.text_label, 0, wx.LEFT | wx.TOP, 10)
 		self.text = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_DONTWRAP)
-		self.main_box.Add(self.text, 0, wx.ALL, 10)
+		self.main_box.Add(self.text, 0, wx.EXPAND | wx.ALL, 10)
 		self.text.SetValue(text)
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Close")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		self.text.SetFocus()
 
@@ -757,8 +765,9 @@ class NotificationViewGui(wx.Dialog):
 
 		# Notification details text
 		self.details_label = wx.StaticText(self.panel, -1, "Notification &Details")
+		self.main_box.Add(self.details_label, 0, wx.LEFT | wx.TOP, 10)
 		self.details = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_DONTWRAP, size=text_box_size)
-		self.main_box.Add(self.details, 0, wx.ALL, 10)
+		self.main_box.Add(self.details, 0, wx.EXPAND | wx.ALL, 10)
 		self.details.SetFocus()
 
 		# Build details text
@@ -791,11 +800,12 @@ class NotificationViewGui(wx.Dialog):
 		self.status = getattr(notification, 'status', None)
 		if self.status:
 			self.post_label = wx.StaticText(self.panel, -1, "&Post Content")
+			self.main_box.Add(self.post_label, 0, wx.LEFT | wx.TOP, 10)
 			if self.account.app.prefs.wrap:
 				self.post_text = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE, size=text_box_size)
 			else:
 				self.post_text = wx.TextCtrl(self.panel, style=wx.TE_READONLY|wx.TE_MULTILINE|wx.TE_DONTWRAP, size=text_box_size)
-			self.main_box.Add(self.post_text, 0, wx.ALL, 10)
+			self.main_box.Add(self.post_text, 0, wx.EXPAND | wx.ALL, 10)
 
 			# Get post content
 			content = getattr(self.status, 'content', '')
@@ -842,6 +852,7 @@ class NotificationViewGui(wx.Dialog):
 			if self.status:
 				self.post_text.SetValue(self.post_text.GetValue().replace("\r", ""))
 
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 
 	def OnViewProfile(self, event):
@@ -902,9 +913,13 @@ class ViewImageGui(wx.Dialog):
 			wx.Dialog.__init__(self, None, title="Image", size=(400, 300))
 			self.Bind(wx.EVT_CLOSE, self.OnClose)
 			self.panel = wx.Panel(self)
+			self.main_box = wx.BoxSizer(wx.VERTICAL)
 			self.text = wx.StaticText(self.panel, -1, "No image available")
+			self.main_box.Add(self.text, 0, wx.ALL, 10)
 			self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Close")
 			self.close.Bind(wx.EVT_BUTTON, self.OnClose)
+			self.main_box.Add(self.close, 0, wx.ALL, 10)
+			self.panel.SetSizer(self.main_box)
 			self.panel.Layout()
 			return
 
@@ -918,10 +933,15 @@ class ViewImageGui(wx.Dialog):
 		self.SetClientSize(self.size)
 		self.Bind(wx.EVT_CLOSE, self.OnClose)
 		self.panel = wx.Panel(self)
+		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.text_label = wx.StaticText(self.panel, -1, "Image")
+		self.main_box.Add(self.text_label, 0, wx.LEFT | wx.TOP, 10)
 		self.text = wx.StaticBitmap(self.panel, -1, self.image, (10, 5), self.size)
+		self.main_box.Add(self.text, 0, wx.ALL, 10)
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Close")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
+		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		self.close.SetFocus()
 

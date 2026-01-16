@@ -13,8 +13,9 @@ class ListsGui(wx.Dialog):
 		self.panel = wx.Panel(self)
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.list_label = wx.StaticText(self.panel, -1, label="&Lists")
+		self.main_box.Add(self.list_label, 0, wx.LEFT | wx.TOP, 10)
 		self.list = wx.ListBox(self.panel, -1)
-		self.main_box.Add(self.list, 0, wx.ALL, 10)
+		self.main_box.Add(self.list, 0, wx.EXPAND | wx.ALL, 10)
 		self.list.SetFocus()
 		self.list.Bind(wx.EVT_LISTBOX, self.on_list_change)
 		self.add_items()
@@ -54,6 +55,7 @@ class ListsGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		theme.apply_theme(self)
 
@@ -160,8 +162,9 @@ class NewListGui(wx.Dialog):
 		self.panel = wx.Panel(self)
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.text_label = wx.StaticText(self.panel, -1, "Name of list")
+		self.main_box.Add(self.text_label, 0, wx.LEFT | wx.TOP, 10)
 		self.text = wx.TextCtrl(self.panel, -1, "", style=wx.TE_PROCESS_ENTER | wx.TE_DONTWRAP)
-		self.main_box.Add(self.text, 0, wx.ALL, 10)
+		self.main_box.Add(self.text, 0, wx.EXPAND | wx.ALL, 10)
 		self.text.SetFocus()
 		if list_obj is not None:
 			list_title = getattr(list_obj, 'title', '') or getattr(list_obj, 'name', '')
@@ -169,6 +172,7 @@ class NewListGui(wx.Dialog):
 
 		# Mastodon list replies_policy
 		self.replies_label = wx.StaticText(self.panel, -1, "Show replies to")
+		self.main_box.Add(self.replies_label, 0, wx.LEFT | wx.TOP, 10)
 		self.replies = wx.ComboBox(self.panel, -1, "", style=wx.CB_READONLY)
 		self.replies.Insert("No one", 0)  # none
 		self.replies.Insert("List members only", 1)  # list
@@ -196,6 +200,7 @@ class NewListGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 
 	def Create(self, event):

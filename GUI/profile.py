@@ -13,16 +13,18 @@ class ProfileGui(wx.Dialog):
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 
 		self.name_label = wx.StaticText(self.panel, -1, "Display Name")
+		self.main_box.Add(self.name_label, 0, wx.LEFT | wx.TOP, 10)
 		self.name = wx.TextCtrl(self.panel, -1, "")
-		self.main_box.Add(self.name, 0, wx.ALL, 10)
+		self.main_box.Add(self.name, 0, wx.EXPAND | wx.ALL, 10)
 		self.name.SetFocus()
 		display_name = getattr(s, 'display_name', '')
 		if display_name:
 			self.name.SetValue(display_name)
 
 		self.description_label = wx.StaticText(self.panel, -1, "Bio")
+		self.main_box.Add(self.description_label, 0, wx.LEFT | wx.TOP, 10)
 		self.description = wx.TextCtrl(self.panel, -1, "", style=wx.TE_MULTILINE)
-		self.main_box.Add(self.description, 0, wx.ALL, 10)
+		self.main_box.Add(self.description, 0, wx.EXPAND | wx.ALL, 10)
 		note = getattr(s, 'note', '')
 		if note:
 			# Strip HTML from the bio
@@ -30,8 +32,9 @@ class ProfileGui(wx.Dialog):
 
 		# Mastodon profile fields (up to 4 key-value pairs)
 		self.fields_label = wx.StaticText(self.panel, -1, "Profile Fields (Name: Value, one per line)")
+		self.main_box.Add(self.fields_label, 0, wx.LEFT | wx.TOP, 10)
 		self.fields = wx.TextCtrl(self.panel, -1, "", style=wx.TE_MULTILINE)
-		self.main_box.Add(self.fields, 0, wx.ALL, 10)
+		self.main_box.Add(self.fields, 0, wx.EXPAND | wx.ALL, 10)
 		fields = getattr(s, 'fields', [])
 		if fields:
 			field_text = ""
@@ -55,6 +58,7 @@ class ProfileGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		theme.apply_theme(self)
 

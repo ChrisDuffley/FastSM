@@ -10,8 +10,9 @@ class SearchGui(wx.Dialog):
 		self.panel = wx.Panel(self)
 		self.main_box = wx.BoxSizer(wx.VERTICAL)
 		self.text_label = wx.StaticText(self.panel, -1, "Search text")
+		self.main_box.Add(self.text_label, 0, wx.LEFT | wx.TOP, 10)
 		self.text = wx.TextCtrl(self.panel, -1, "",style=wx.TE_PROCESS_ENTER|wx.TE_DONTWRAP)
-		self.main_box.Add(self.text, 0, wx.ALL, 10)
+		self.main_box.Add(self.text, 0, wx.EXPAND | wx.ALL, 10)
 		self.text.SetFocus()
 		self.text.Bind(wx.EVT_TEXT_ENTER, self.Search)
 		self.search = wx.Button(self.panel, wx.ID_DEFAULT, "&Search")
@@ -21,6 +22,7 @@ class SearchGui(wx.Dialog):
 		self.close = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
 		self.close.Bind(wx.EVT_BUTTON, self.OnClose)
 		self.main_box.Add(self.close, 0, wx.ALL, 10)
+		self.panel.SetSizer(self.main_box)
 		self.panel.Layout()
 		theme.apply_theme(self)
 
