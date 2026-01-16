@@ -31,6 +31,7 @@ jobs:
           pip install pyperclip
           pip install wxpython
           pip install requests
+          pip install pyenchant
           pip install git+https://github.com/accessibleapps/sound_lib
           pip install git+https://github.com/accessibleapps/accessible_output2
           pip install git+https://github.com/accessibleapps/keyboard_handler
