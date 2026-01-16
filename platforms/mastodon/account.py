@@ -541,7 +541,18 @@ class MastodonAccount(PlatformAccount):
 
     def search_statuses(self, query: str, limit: int = 40, **kwargs) -> List[UniversalStatus]:
         """Search for statuses."""
-        result = self.api.search_v2(q=query, result_type='statuses', limit=limit, **kwargs)
+        # Build search kwargs - some older Mastodon.py versions don't support limit
+        search_kwargs = {'q': query, 'result_type': 'statuses'}
+        if 'max_id' in kwargs:
+            search_kwargs['max_id'] = kwargs['max_id']
+
+        try:
+            # Try with limit first (Mastodon.py 2.8.0+)
+            result = self.api.search_v2(limit=limit, **search_kwargs)
+        except TypeError:
+            # Fall back without limit for older Mastodon.py versions
+            result = self.api.search_v2(**search_kwargs)
+
         statuses = result.statuses if hasattr(result, 'statuses') else result.get('statuses', [])
         converted = self._convert_statuses(statuses)
         for status in converted:

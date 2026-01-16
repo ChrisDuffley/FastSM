@@ -230,11 +230,16 @@ class timeline(object):
 		if hasattr(self.account, '_platform') and self.account._platform:
 			return self.account._platform.search_statuses(self.data, limit=limit, max_id=max_id)
 
-		# Fallback to Mastodon API - only pass supported params
-		search_kwargs = {'limit': limit}
+		# Fallback to Mastodon API - handle versions that don't support limit
+		search_kwargs = {'q': self.data, 'result_type': 'statuses'}
 		if max_id:
 			search_kwargs['max_id'] = max_id
-		result = self.account.api.search_v2(q=self.data, result_type='statuses', **search_kwargs)
+		try:
+			# Try with limit first (Mastodon.py 2.8.0+)
+			result = self.account.api.search_v2(limit=limit, **search_kwargs)
+		except TypeError:
+			# Fall back without limit for older Mastodon.py versions
+			result = self.account.api.search_v2(**search_kwargs)
 		if hasattr(result, 'statuses'):
 			return result.statuses
 		return result.get('statuses', [])
