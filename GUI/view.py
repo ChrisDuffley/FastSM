@@ -350,11 +350,23 @@ class UserViewGui(wx.Dialog):
 			self.hide_boosts.Bind(wx.EVT_BUTTON, self.OnHideBoosts)
 			self.main_box.Add(self.hide_boosts, 0, wx.ALL, 10)
 
+			self.enable_notifs = wx.Button(self.panel, -1, "Enable &Notifications")
+			self.enable_notifs.Bind(wx.EVT_BUTTON, self.OnEnableNotifications)
+			self.main_box.Add(self.enable_notifs, 0, wx.ALL, 10)
+
+			self.disable_notifs = wx.Button(self.panel, -1, "&Disable Notifications")
+			self.disable_notifs.Bind(wx.EVT_BUTTON, self.OnDisableNotifications)
+			self.main_box.Add(self.disable_notifs, 0, wx.ALL, 10)
+
 			self.show_boosts.Enable(False)
 			self.hide_boosts.Enable(False)
+			self.enable_notifs.Enable(False)
+			self.disable_notifs.Enable(False)
 		else:
 			self.show_boosts = None
 			self.hide_boosts = None
+			self.enable_notifs = None
+			self.disable_notifs = None
 
 		self.message = wx.Button(self.panel, -1, "&Message")
 		self.message.Bind(wx.EVT_BUTTON, self.OnMessage)
@@ -438,6 +450,15 @@ class UserViewGui(wx.Dialog):
 						else:
 							self.hide_boosts.Enable(False)
 							self.show_boosts.Enable(True)
+					# Enable/disable notifications only available when following
+					if self.enable_notifs is not None:
+						notifying = getattr(rel, 'notifying', False)
+						if notifying:
+							self.disable_notifs.Enable(True)
+							self.enable_notifs.Enable(False)
+						else:
+							self.disable_notifs.Enable(False)
+							self.enable_notifs.Enable(True)
 				else:
 					self.unfollow.Enable(False)
 					self.follow.Enable(True)
@@ -445,6 +466,10 @@ class UserViewGui(wx.Dialog):
 					if self.show_boosts is not None:
 						self.show_boosts.Enable(False)
 						self.hide_boosts.Enable(False)
+					# Disable notification buttons when not following
+					if self.enable_notifs is not None:
+						self.enable_notifs.Enable(False)
+						self.disable_notifs.Enable(False)
 
 				if muting:
 					self.unmute.Enable(True)
@@ -469,6 +494,9 @@ class UserViewGui(wx.Dialog):
 			if self.show_boosts is not None:
 				self.show_boosts.Enable(True)
 				self.hide_boosts.Enable(True)
+			if self.enable_notifs is not None:
+				self.enable_notifs.Enable(True)
+				self.disable_notifs.Enable(True)
 
 		self.message.Enable(True)
 		self.timeline.Enable(True)
@@ -571,6 +599,30 @@ class UserViewGui(wx.Dialog):
 			self.on_list_change(None)
 		except Exception as error:
 			self.account.app.handle_error(error, "hide boosts")
+
+	def OnEnableNotifications(self, event):
+		"""Enable notifications when this user posts (Mastodon only)."""
+		import speak
+		user = self.users[self.index]
+		try:
+			self.account.api.account_follow(id=user.id, notify=True)
+			sound.play(self.account, "unmute")
+			speak.speak(f"Notifications enabled for {user.acct}")
+			self.on_list_change(None)
+		except Exception as error:
+			self.account.app.handle_error(error, "enable notifications")
+
+	def OnDisableNotifications(self, event):
+		"""Disable notifications when this user posts (Mastodon only)."""
+		import speak
+		user = self.users[self.index]
+		try:
+			self.account.api.account_follow(id=user.id, notify=False)
+			sound.play(self.account, "mute")
+			speak.speak(f"Notifications disabled for {user.acct}")
+			self.on_list_change(None)
+		except Exception as error:
+			self.account.app.handle_error(error, "disable notifications")
 
 	def OnFollowKey(self, event):
 		"""Follow user via keyboard shortcut."""
