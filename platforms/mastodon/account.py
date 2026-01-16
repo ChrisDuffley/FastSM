@@ -189,7 +189,7 @@ class MastodonAccount(PlatformAccount):
             result = []
             for s in statuses:
                 # Convert scheduled status to a pseudo-status for display
-                status = mastodon_status_to_universal(s.params, scheduled_at=s.scheduled_at, scheduled_id=s.id)
+                status = mastodon_status_to_universal(s.params)
                 if status:
                     status._scheduled = True
                     status._scheduled_id = s.id

@@ -139,6 +139,7 @@ class Application:
 		self.prefs.autoOpenSingleURL = self.prefs.get("autoOpenSingleURL", False)
 		self.prefs.use24HourTime = self.prefs.get("use24HourTime", False)
 		self.prefs.fetch_pages = self.prefs.get("fetch_pages", 1)  # Number of API calls to make when loading timelines
+		self.prefs.single_api_on_startup = self.prefs.get("single_api_on_startup", False)  # Use only one API call on initial timeline loads
 		self.prefs.load_all_previous = self.prefs.get("load_all_previous", False)  # Keep loading previous until timeline is fully loaded
 		self.prefs.earcon_audio = self.prefs.get("earcon_audio", True)
 		self.prefs.earcon_top = self.prefs.get("earcon_top", False)

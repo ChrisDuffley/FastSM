@@ -274,6 +274,10 @@ class invisible_interface(object):
 		if status:
 			misc.pin_toggle(get_app().currentAccount, status)
 
+	def UpdateProfile(self):
+		"""Open the update profile dialog."""
+		main.window.OnUpdateProfile()
+
 	def ContextMenu(self):
 		"""Open the context menu from invisible interface."""
 		import wx

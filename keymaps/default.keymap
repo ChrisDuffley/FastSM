@@ -29,6 +29,7 @@ alt+win+shift+;=SpeakReply
 alt+win+pageup=Prev
 alt+win+u=UserTimeline
 alt+win+shift+u=UserProfile
+control+win+shift+u=UpdateProfile
 alt+win+'=CloseTimeline
 alt+control+win+u=refresh
 alt+win+home=top_item

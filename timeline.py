@@ -571,9 +571,12 @@ class timeline(object):
 				if fetch_pages < 1:
 					fetch_pages = 1
 
+				# Check if we should use single API call on startup
+				single_on_startup = getattr(self.app.prefs, 'single_api_on_startup', False)
+
 				if not back:
-					if fetch_pages > 1 and self.initial:
-						# Multi-page fetch for initial load
+					if fetch_pages > 1 and self.initial and not single_on_startup:
+						# Multi-page fetch for initial load (unless single_api_on_startup is enabled)
 						tl = self._fetch_multiple_pages(self.update_kwargs, fetch_pages)
 					else:
 						tl = self.func(**self.update_kwargs)

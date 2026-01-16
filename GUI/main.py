@@ -1580,6 +1580,16 @@ class MainGui(wx.Frame):
 					status_to_check.bookmarked = False
 					sound.play(account, "unlike")
 					speak.speak("Bookmark removed")
+					# Remove from bookmarks timeline if we're in it
+					if account.currentTimeline.type == "bookmarks":
+						tl = account.currentTimeline
+						idx = tl.index
+						if 0 <= idx < len(tl.statuses):
+							tl.statuses.pop(idx)
+							# Adjust index if needed
+							if tl.index >= len(tl.statuses) and len(tl.statuses) > 0:
+								tl.index = len(tl.statuses) - 1
+							self.on_list_change(None)
 				else:
 					account.api.status_bookmark(status_id)
 					status_to_check.bookmarked = True

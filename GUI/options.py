@@ -154,6 +154,9 @@ class advanced(wx.Panel, wx.Dialog):
 		self.fetch_pages = wx.TextCtrl(self, -1, "")
 		self.main_box.Add(self.fetch_pages, 0, wx.ALL, 10)
 		self.fetch_pages.AppendText(str(get_app().prefs.fetch_pages))
+		self.single_api_on_startup=wx.CheckBox(self, -1, "Use only one API call on initial timeline loads (faster startup)")
+		self.main_box.Add(self.single_api_on_startup, 0, wx.ALL, 10)
+		self.single_api_on_startup.SetValue(get_app().prefs.single_api_on_startup)
 		self.streaming=wx.CheckBox(self, -1, "Enable streaming for home and notifications (Requires restart to disable)")
 		self.main_box.Add(self.streaming, 0, wx.ALL, 10)
 		self.streaming.SetValue(get_app().prefs.streaming)
@@ -250,6 +253,7 @@ class OptionsGui(wx.Dialog):
 			get_app().prefs.fetch_pages=1
 		if get_app().prefs.fetch_pages>10:
 			get_app().prefs.fetch_pages=10
+		get_app().prefs.single_api_on_startup=self.advanced.single_api_on_startup.GetValue()
 		if get_app().prefs.reversed!=self.general.reversed.GetValue():
 			reverse=True
 		else:

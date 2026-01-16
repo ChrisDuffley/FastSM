@@ -177,6 +177,9 @@ class TweetGui(wx.Dialog):
 		if self.type == "post" or self.type == "reply":
 			self.thread = wx.CheckBox(self.panel, -1, "&Thread mode")
 			self.main_box.Add(self.thread, 0, wx.ALL, 10)
+		self.spell_btn = wx.Button(self.panel, wx.ID_DEFAULT, "Spell Chec&k")
+		self.spell_btn.Bind(wx.EVT_BUTTON, self.OnSpellCheck)
+		self.main_box.Add(self.spell_btn, 0, wx.ALL, 10)
 		self.send_btn = wx.Button(self.panel, wx.ID_DEFAULT, "&Send")
 		self.send_btn.Bind(wx.EVT_BUTTON, self.Tweet)
 		self.main_box.Add(self.send_btn, 0, wx.ALL, 10)
@@ -199,6 +202,65 @@ class TweetGui(wx.Dialog):
 			return self.account.supports_feature(feature)
 		# Default to True for backward compatibility (Mastodon supports most features)
 		return True
+
+	def _get_enchant_dict(self):
+		"""Get the enchant dictionary, returns None if not available."""
+		try:
+			import enchant
+			# Try to get the system language, fall back to en_US
+			import locale
+			lang = locale.getdefaultlocale()[0]
+			if lang and enchant.dict_exists(lang):
+				return enchant.Dict(lang)
+			elif enchant.dict_exists('en_US'):
+				return enchant.Dict('en_US')
+			elif enchant.dict_exists('en'):
+				return enchant.Dict('en')
+			return None
+		except ImportError:
+			return None
+		except Exception:
+			return None
+
+	def OnSpellCheck(self, event):
+		"""Perform spell check on the text."""
+		d = self._get_enchant_dict()
+		if not d:
+			speak.speak("Spell check not available. Install enchant library.")
+			return
+
+		text = self.text.GetValue()
+		if not text.strip():
+			speak.speak("No text to check")
+			return
+
+		# Find misspelled words
+		import re
+		# Match words, excluding @mentions, #hashtags, and URLs
+		words = re.findall(r'\b[a-zA-Z\']+\b', text)
+		misspelled = []
+		checked = set()
+
+		for word in words:
+			word_lower = word.lower()
+			if word_lower in checked:
+				continue
+			checked.add(word_lower)
+			# Skip short words and contractions
+			if len(word) < 2:
+				continue
+			if not d.check(word):
+				misspelled.append(word)
+
+		if not misspelled:
+			speak.speak("No spelling errors found")
+			return
+
+		# Show spell check dialog
+		dlg = SpellCheckDialog(self, d, misspelled, text)
+		if dlg.ShowModal() == wx.ID_OK:
+			self.text.SetValue(dlg.corrected_text)
+		dlg.Destroy()
 
 	def OnAddMedia(self, event):
 		"""Add a media attachment with alt text."""
@@ -581,3 +643,146 @@ class TweetGui(wx.Dialog):
 			from . import main
 			wx.CallAfter(main.window.Raise)
 		self.Destroy()
+
+
+class SpellCheckDialog(wx.Dialog):
+	"""Dialog for spell checking text."""
+
+	def __init__(self, parent, dictionary, misspelled, text):
+		wx.Dialog.__init__(self, parent, title="Spell Check", size=(400, 300))
+		self.dictionary = dictionary
+		self.misspelled = misspelled
+		self.corrected_text = text
+		self.current_index = 0
+
+		self.panel = wx.Panel(self)
+		self.main_box = wx.BoxSizer(wx.VERTICAL)
+
+		# Current word display
+		self.word_label = wx.StaticText(self.panel, -1, "Misspelled word:")
+		self.main_box.Add(self.word_label, 0, wx.ALL, 10)
+
+		self.word_text = wx.TextCtrl(self.panel, -1, "", style=wx.TE_READONLY)
+		self.main_box.Add(self.word_text, 0, wx.EXPAND | wx.ALL, 10)
+
+		# Replacement field
+		self.replace_label = wx.StaticText(self.panel, -1, "&Replace with:")
+		self.main_box.Add(self.replace_label, 0, wx.ALL, 10)
+
+		self.replace_text = wx.TextCtrl(self.panel, -1, "")
+		self.main_box.Add(self.replace_text, 0, wx.EXPAND | wx.ALL, 10)
+
+		# Suggestions list
+		self.suggest_label = wx.StaticText(self.panel, -1, "&Suggestions:")
+		self.main_box.Add(self.suggest_label, 0, wx.ALL, 10)
+
+		self.suggestions = wx.ListBox(self.panel, -1, size=(350, 100))
+		self.suggestions.Bind(wx.EVT_LISTBOX, self.OnSuggestionSelect)
+		self.suggestions.Bind(wx.EVT_LISTBOX_DCLICK, self.OnReplace)
+		self.main_box.Add(self.suggestions, 0, wx.EXPAND | wx.ALL, 10)
+
+		# Buttons
+		btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+		self.replace_btn = wx.Button(self.panel, -1, "&Replace")
+		self.replace_btn.Bind(wx.EVT_BUTTON, self.OnReplace)
+		btn_sizer.Add(self.replace_btn, 0, wx.ALL, 5)
+
+		self.replace_all_btn = wx.Button(self.panel, -1, "Replace &All")
+		self.replace_all_btn.Bind(wx.EVT_BUTTON, self.OnReplaceAll)
+		btn_sizer.Add(self.replace_all_btn, 0, wx.ALL, 5)
+
+		self.ignore_btn = wx.Button(self.panel, -1, "&Ignore")
+		self.ignore_btn.Bind(wx.EVT_BUTTON, self.OnIgnore)
+		btn_sizer.Add(self.ignore_btn, 0, wx.ALL, 5)
+
+		self.ignore_all_btn = wx.Button(self.panel, -1, "Ignore A&ll")
+		self.ignore_all_btn.Bind(wx.EVT_BUTTON, self.OnIgnoreAll)
+		btn_sizer.Add(self.ignore_all_btn, 0, wx.ALL, 5)
+
+		self.main_box.Add(btn_sizer, 0, wx.ALL, 5)
+
+		# Done/Cancel buttons
+		done_sizer = wx.BoxSizer(wx.HORIZONTAL)
+		self.done_btn = wx.Button(self.panel, wx.ID_OK, "&Done")
+		done_sizer.Add(self.done_btn, 0, wx.ALL, 5)
+
+		self.cancel_btn = wx.Button(self.panel, wx.ID_CANCEL, "&Cancel")
+		done_sizer.Add(self.cancel_btn, 0, wx.ALL, 5)
+
+		self.main_box.Add(done_sizer, 0, wx.ALL, 5)
+
+		self.panel.SetSizer(self.main_box)
+		self.panel.Layout()
+
+		# Show first word
+		self._show_current_word()
+		theme.apply_theme(self)
+
+	def _show_current_word(self):
+		"""Display the current misspelled word and its suggestions."""
+		if self.current_index >= len(self.misspelled):
+			speak.speak("Spell check complete")
+			self.EndModal(wx.ID_OK)
+			return
+
+		word = self.misspelled[self.current_index]
+		self.word_text.SetValue(word)
+		self.replace_text.SetValue(word)
+
+		# Get suggestions
+		self.suggestions.Clear()
+		try:
+			suggestions = self.dictionary.suggest(word)[:10]  # Limit to 10 suggestions
+			for s in suggestions:
+				self.suggestions.Append(s)
+			if suggestions:
+				self.suggestions.SetSelection(0)
+				self.replace_text.SetValue(suggestions[0])
+		except:
+			pass
+
+		# Announce
+		remaining = len(self.misspelled) - self.current_index
+		speak.speak(f"{word}, {remaining} remaining")
+		self.replace_text.SetFocus()
+
+	def OnSuggestionSelect(self, event):
+		"""Copy selected suggestion to replace field."""
+		selection = self.suggestions.GetSelection()
+		if selection != wx.NOT_FOUND:
+			self.replace_text.SetValue(self.suggestions.GetString(selection))
+
+	def OnReplace(self, event):
+		"""Replace current word and move to next."""
+		old_word = self.misspelled[self.current_index]
+		new_word = self.replace_text.GetValue()
+		if new_word:
+			# Replace first occurrence only
+			import re
+			self.corrected_text = re.sub(r'\b' + re.escape(old_word) + r'\b', new_word, self.corrected_text, count=1)
+		self.current_index += 1
+		self._show_current_word()
+
+	def OnReplaceAll(self, event):
+		"""Replace all occurrences of current word."""
+		old_word = self.misspelled[self.current_index]
+		new_word = self.replace_text.GetValue()
+		if new_word:
+			import re
+			self.corrected_text = re.sub(r'\b' + re.escape(old_word) + r'\b', new_word, self.corrected_text)
+		self.current_index += 1
+		self._show_current_word()
+
+	def OnIgnore(self, event):
+		"""Skip current word."""
+		self.current_index += 1
+		self._show_current_word()
+
+	def OnIgnoreAll(self, event):
+		"""Skip all occurrences of current word."""
+		# Remove all instances of this word from misspelled list
+		word = self.misspelled[self.current_index]
+		self.misspelled = [w for w in self.misspelled if w.lower() != word.lower()]
+		# Don't increment index since we removed items
+		self._show_current_word()

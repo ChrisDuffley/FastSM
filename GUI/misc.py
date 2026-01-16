@@ -647,8 +647,10 @@ def load_conversation(account, status):
 	for i in account.timelines:
 		if i.type == "conversation":
 			return False
-	display_name = getattr(status.account, 'display_name', '') or status.account.acct
-	account.timelines.append(timeline.timeline(account, name="Conversation with " + display_name, type="conversation", data=status.account.acct, status=status))
+	# For boosts, use the original post's author
+	original_status = status.reblog if hasattr(status, 'reblog') and status.reblog else status
+	display_name = getattr(original_status.account, 'display_name', '') or original_status.account.acct
+	account.timelines.append(timeline.timeline(account, name="Conversation with " + display_name, type="conversation", data=original_status.account.acct, status=original_status))
 	main.window.refreshTimelines()
 	main.window.list.SetSelection(len(account.timelines) - 1)
 	account.currentIndex = len(account.timelines) - 1
