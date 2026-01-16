@@ -1670,6 +1670,13 @@ class MainGui(wx.Frame):
 				sound.play(account, "unfollow")
 				speak.speak(f"Unfollowed {user.acct}")
 			else:
+				# Check if confirmation is required
+				if get_app().prefs.confirm_unfollow:
+					dlg = wx.MessageDialog(self, f"Are you sure you want to follow {user.acct}?", "Confirm Follow", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+					if dlg.ShowModal() != wx.ID_YES:
+						dlg.Destroy()
+						return
+					dlg.Destroy()
 				account.follow(user.id)
 				sound.play(account, "follow")
 				speak.speak(f"Followed {user.acct}")
