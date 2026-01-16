@@ -129,14 +129,14 @@ class ChooseGui(wx.Dialog):
 				import speak
 				speak.speak("Could not find user")
 		elif self.type==self.TYPE_USER_TIMELINE_DIRECT:
-			# Use user object directly for timeline
+			# Use user object directly for timeline, or look up if typed manually
 			idx = self.chooser.GetSelection()
 			if idx >= 0 and idx < len(self.user_objects):
 				user = self.user_objects[idx]
 				self._show_filter_dialog(user.acct)
-			else:
-				import speak
-				speak.speak("Could not find user")
+			elif self.returnvalue:
+				# User typed a username manually - fall back to lookup
+				self._show_filter_dialog(self.returnvalue)
 		elif self.type==self.TYPE_FOLLOW_TOGGLE:
 			# Toggle follow state - check relationship first
 			try:

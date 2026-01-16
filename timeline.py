@@ -97,13 +97,22 @@ class timeline(object):
 				self.func = self.account.api.bookmarks
 			self.removable = True
 		elif self.type == "user":
-			# Extract user_id and filter from data (data can be string or dict with username/filter)
+			# Extract username and filter from data (data can be string or dict with username/filter)
 			if isinstance(self.data, dict):
-				user_id = self.user.id if self.user else self.data.get('username')
+				username = self.data.get('username')
 				user_filter = self.data.get('filter')
 			else:
-				user_id = self.user.id if self.user else self.data
+				username = self.data
 				user_filter = None
+
+			# If we don't have a user object, look it up by username
+			if not self.user and username:
+				looked_up = self.account.app.lookup_user_name(self.account, username)
+				if looked_up and looked_up != -1:
+					self.user = looked_up
+
+			# Now get the user_id - prefer user object, fall back to username (may fail)
+			user_id = self.user.id if self.user else username
 
 			if hasattr(self.account, '_platform') and self.account._platform:
 				# Use default args to capture values at definition time

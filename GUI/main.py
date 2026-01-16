@@ -1202,12 +1202,10 @@ class MainGui(wx.Frame):
 		account = get_app().currentAccount
 		# Get users from current item (handles both statuses and notifications)
 		u = self._get_users_from_current_item(account)
-		if not u:
-			speak.speak("No user found")
-			return
-		u2 = [i.acct for i in u]
+		u2 = [i.acct for i in u] if u else []
 		# Use direct type to pass user objects, avoiding lookup issues
-		chooser.chooser(account, "User Timeline", "Choose user timeline", u2, "userTimeline_direct", user_objects=u)
+		# If no users in current item, user can still type a username
+		chooser.chooser(account, "User Timeline", "Enter or choose a username", u2, "userTimeline_direct", user_objects=u or [])
 
 	def OnSearch(self, event=None):
 		s=search.SearchGui(get_app().currentAccount)
