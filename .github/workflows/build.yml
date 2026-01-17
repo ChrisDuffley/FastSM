@@ -76,6 +76,7 @@ jobs:
           pip install wxpython
           pip install requests
           pip install git+https://github.com/accessibleapps/platform_utils
+          pip install git+https://github.com/accessibleapps/accessible_output2
           pip install git+https://github.com/accessibleapps/keyboard_handler
 
       - name: Build executable
