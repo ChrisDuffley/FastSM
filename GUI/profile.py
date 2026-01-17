@@ -63,14 +63,14 @@ class ProfileGui(wx.Dialog):
 		theme.apply_theme(self)
 
 	def Update(self, event):
-		# Parse fields from text
+		# Parse fields from text - Mastodon.py expects list of tuples
 		fields_list = []
 		fields_text = self.fields.GetValue().strip()
 		if fields_text:
 			for line in fields_text.split("\n"):
 				if ": " in line:
 					name, value = line.split(": ", 1)
-					fields_list.append({"name": name.strip(), "value": value.strip()})
+					fields_list.append((name.strip(), value.strip()))
 
 		try:
 			self.account.api.account_update_credentials(

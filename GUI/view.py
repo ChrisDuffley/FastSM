@@ -902,6 +902,10 @@ class ViewImageGui(wx.Dialog):
 		self.current_index = 0
 		self.descriptions = []
 
+		# Unwrap boosted posts to get the actual content
+		if hasattr(status, 'reblog') and status.reblog:
+			status = status.reblog
+
 		# Check if this is a user object (for profile images)
 		if hasattr(status, 'avatar'):
 			self.urls.append(status.avatar)
