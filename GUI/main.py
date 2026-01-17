@@ -569,6 +569,18 @@ class MainGui(wx.Frame):
 						tl.sync_position_to_server()
 					except:
 						pass
+		# Save local position for notifications and mentions timelines
+		for account in get_app().accounts:
+			for tl in account.timelines:
+				try:
+					if tl.type == "notifications" and tl.statuses and tl.index < len(tl.statuses):
+						status = tl.statuses[tl.index]
+						account.prefs.last_notifications_id = str(status.id)
+					elif tl.type == "mentions" and tl.statuses and tl.index < len(tl.statuses):
+						status = tl.statuses[tl.index]
+						account.prefs.last_mentions_id = str(status.id)
+				except:
+					pass
 		if platform.system()!="Darwin":
 			self.trayicon.on_exit(event,False)
 		self.Destroy()

@@ -42,7 +42,7 @@ class MastodonStreamListener(StreamListener):
 				if tl.type == "user" and tl.user and str(status.account.id) == str(tl.user.id):
 					tl.load(items=[status])
 		except Exception as e:
-			print(f"Stream update error: {e}")
+			self.account.app.handle_error(e, "Stream update")
 
 	def on_notification(self, notification):
 		"""Called when a new notification arrives"""
@@ -76,7 +76,7 @@ class MastodonStreamListener(StreamListener):
 						tl.load(items=[status])
 						break
 		except Exception as e:
-			print(f"Stream notification error: {e}")
+			self.account.app.handle_error(e, "Stream notification")
 
 	def on_conversation(self, conversation):
 		"""Called when a direct message conversation is updated"""
@@ -86,7 +86,7 @@ class MastodonStreamListener(StreamListener):
 					tl.load(items=[conversation])
 					break
 		except Exception as e:
-			print(f"Stream conversation error: {e}")
+			self.account.app.handle_error(e, "Stream conversation")
 
 	def on_delete(self, status_id):
 		"""Called when a status is deleted"""
@@ -103,7 +103,7 @@ class MastodonStreamListener(StreamListener):
 			if needs_refresh:
 				wx.CallAfter(main.window.refreshList)
 		except Exception as e:
-			print(f"Stream delete error: {e}")
+			self.account.app.handle_error(e, "Stream delete")
 
 	def on_status_update(self, status):
 		"""Called when a status is edited"""
@@ -124,7 +124,7 @@ class MastodonStreamListener(StreamListener):
 			if needs_refresh:
 				wx.CallAfter(main.window.refreshList)
 		except Exception as e:
-			print(f"Stream status update error: {e}")
+			self.account.app.handle_error(e, "Stream status update")
 
 	def handle_heartbeat(self):
 		"""Called on heartbeat to keep connection alive"""

@@ -76,6 +76,9 @@ class mastodon(object):
 		self.prefs.soundpan = self.prefs.get("soundpan", 0)
 		self.prefs.soundpack_volume = self.prefs.get("soundpack_volume", 1.0)  # Per-account soundpack volume
 		self.prefs.mentions_in_notifications = self.prefs.get("mentions_in_notifications", False)
+		# Local position sync for notifications/mentions timelines
+		self.prefs.last_notifications_id = self.prefs.get("last_notifications_id", None)
+		self.prefs.last_mentions_id = self.prefs.get("last_mentions_id", None)
 
 		# Determine platform type if not set
 		if self.prefs.platform_type == "":

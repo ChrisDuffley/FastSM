@@ -756,6 +756,11 @@ class timeline(object):
 					if synced and self.app.currentAccount == self.account and self.account.currentTimeline == self:
 						# Update UI to reflect synced position
 						wx.CallAfter(main.window.list2.SetSelection, self.index)
+				# Sync local position for notifications/mentions
+				if self.type in ("notifications", "mentions"):
+					synced = self.sync_local_position()
+					if synced and self.app.currentAccount == self.account and self.account.currentTimeline == self:
+						wx.CallAfter(main.window.list2.SetSelection, self.index)
 				# Notify account that this timeline's initial load is complete
 				if hasattr(self.account, '_on_timeline_initial_load_complete'):
 					self.account._on_timeline_initial_load_complete()
@@ -918,6 +923,40 @@ class timeline(object):
 				self._last_synced_id = current_id
 				self._position_moved = False
 				return True
+			return False
+
+		except Exception:
+			return False
+
+	def sync_local_position(self):
+		"""Restore position from locally saved ID for notifications/mentions.
+
+		Should be called after initial load.
+		Returns True if position was restored, False otherwise.
+		"""
+		if self.type not in ("notifications", "mentions"):
+			return False
+
+		if len(self.statuses) == 0:
+			return False
+
+		try:
+			# Get saved ID from account prefs
+			if self.type == "notifications":
+				saved_id = getattr(self.account.prefs, 'last_notifications_id', None)
+			else:  # mentions
+				saved_id = getattr(self.account.prefs, 'last_mentions_id', None)
+
+			if not saved_id:
+				return False
+
+			# Find the status with this ID
+			for i, status in enumerate(self.statuses):
+				if str(status.id) == str(saved_id):
+					self.index = i
+					return True
+
+			# ID not found in current statuses
 			return False
 
 		except Exception:

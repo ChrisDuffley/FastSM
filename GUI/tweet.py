@@ -698,6 +698,9 @@ class TweetGui(wx.Dialog):
 		else:
 			sound.play(self.account, "error")
 			speak.speak("Failed to send post")
+			# Re-enable poll button on error so user can modify poll options
+			if hasattr(self, 'poll') and self.poll is not None:
+				self.poll.Enable(True)
 
 	def OnClose(self, event):
 		# On Mac, explicitly reactivate main window to fix menu state
