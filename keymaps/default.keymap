@@ -36,6 +36,7 @@ alt+win+home=top_item
 alt+win+end=bottom_item
 alt+win+shift+return=PlayExternal
 control+win+shift+return=StopAudio
+control+win+shift+a=AudioPlayer
 alt+win+delete=Delete
 alt+win+o=Options
 control+alt+win+o=AccountOptions
