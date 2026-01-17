@@ -23,28 +23,12 @@ media_matchlist = [
 	{"match": r"https?://vm.tiktok.com/.+", "func":return_url},
 	{"match": r"https?://soundcloud.com/.+", "func":return_url},
 	{"match": r"https?://t.co/.+", "func":return_url},
-	{"match": r"^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$", "func":return_url}
-]
-
-audio_matchlist = [
-	{"match": r"https://sndup.net/[a-zA-Z0-9]+/[ad]$", "func":return_url},
-	# Match URLs with audio file extensions (allows query strings after extension)
-	# Use non-greedy match (+?) so it stops at the extension
-	{"match": r"^https?://[^\s]+?\.(mp3|m4a|ogg|opus|flac|wav|aac)(\?[^\s]*)?$", "func":return_url},
 ]
 
 def get_media_urls(urls):
 	result = []
 	for u in urls:
 		for service in media_matchlist:
-			if re.match(service['match'], u.lower()) != None:
-				result.append({"url":u, "func":service['func']})
-	return result
-
-def get_audio_urls(urls):
-	result = []
-	for u in urls:
-		for service in audio_matchlist:
 			if re.match(service['match'], u.lower()) != None:
 				result.append({"url":u, "func":service['func']})
 	return result

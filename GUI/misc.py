@@ -660,25 +660,6 @@ def load_conversation(account, status):
 	main.window.on_list_change(None)
 
 
-def play(status):
-	if sound.player is not None and sound.player.is_playing:
-		speak.speak("Stopped")
-		sound.stop()
-		return
-	# For boosts, get the actual boosted post
-	if hasattr(status, 'reblog') and status.reblog:
-		status = status.reblog
-	text = get_app().strip_html(getattr(status, 'content', ''))
-	urls = get_app().find_urls_in_text(text)
-	try:
-		speak.speak("Retrieving URL...")
-		audio = sound.get_audio_urls(urls)[0]
-		a = audio['func'](audio['url'])
-		sound.play_url(a)
-	except:
-		speak.speak("No audio.")
-
-
 def play_external(status):
 	"""Play audio from a post - checks attachments first, then URLs in text."""
 	# If already playing, stop
