@@ -14,23 +14,23 @@ def return_url(url):
 
 media_matchlist = [
 	{"match": r"https://sndup.net/[a-zA-Z0-9]+/[ad]$", "func":return_url},
-	{"match": r"^http:\/\/\S+(\/\S+)*(\/)?\.(mp3|m4a|ogg|opus|flac)$", "func":return_url},
-	{"match": r"^https:\/\/\S+(\/\S+)*(\/)?\.(mp3|m4a|ogg|opus|flac)$", "func":return_url},
-	{"match": r"^http:\/\/\S+:[+-]?[1-9]\d*|0(\/\S+)*(\/)?$", "func":return_url},
-	{"match": r"^https:\/\/\S+:[+-]?[1-9]\d*|0(\/\S+)*(\/)?$", "func":return_url},
+	# Audio/video file extensions (non-greedy, allows query strings)
+	{"match": r"^https?://[^\s]+?\.(mp3|m4a|ogg|opus|flac|wav|aac|mp4|webm|mov|avi)(\?[^\s]*)?$", "func":return_url},
+	# Streaming URLs with port numbers
+	{"match": r"^https?://[^\s:]+:\d+(\/[^\s]*)?$", "func":return_url},
 	{"match": r"https?://twitter.com/.+/status/.+/video/.+", "func":return_url},
-	{"match": r"https?://twitch.tv/.", "func":return_url},
-	{"match": r"http?://twitch.tv/.", "func":return_url},
+	{"match": r"https?://twitch.tv/.+", "func":return_url},
 	{"match": r"https?://vm.tiktok.com/.+", "func":return_url},
 	{"match": r"https?://soundcloud.com/.+", "func":return_url},
-	{"match": r"https?://t.co/.", "func":return_url},
+	{"match": r"https?://t.co/.+", "func":return_url},
 	{"match": r"^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$", "func":return_url}
 ]
 
 audio_matchlist = [
 	{"match": r"https://sndup.net/[a-zA-Z0-9]+/[ad]$", "func":return_url},
-	{"match": r"^http:\/\/\S+(\/\S+)*(\/)?\.(mp3|m4a|ogg|opus|flac)$", "func":return_url},
-	{"match": r"^https:\/\/\S+(\/\S+)*(\/)?\.(mp3|m4a|ogg|opus|flac)$", "func":return_url},
+	# Match URLs with audio file extensions (allows query strings after extension)
+	# Use non-greedy match (+?) so it stops at the extension
+	{"match": r"^https?://[^\s]+?\.(mp3|m4a|ogg|opus|flac|wav|aac)(\?[^\s]*)?$", "func":return_url},
 ]
 
 def get_media_urls(urls):

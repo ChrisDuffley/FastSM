@@ -702,12 +702,13 @@ def play_external(status):
 			if audio_url:
 				break
 
-	# If no audio attachment, check all URLs in status (including media URLs)
+	# If no audio attachment, check all URLs in status for media (including audio)
+	# Use get_media_urls to match the same URLs that earcon detection uses
 	if not audio_url:
 		urls = get_app().find_urls_in_status(status)
-		audio_urls = sound.get_audio_urls(urls)
-		if audio_urls:
-			audio_url = audio_urls[0]['url']
+		media_urls = sound.get_media_urls(urls)
+		if media_urls:
+			audio_url = media_urls[0]['url']
 
 	if audio_url:
 		speak.speak("Playing audio...")
