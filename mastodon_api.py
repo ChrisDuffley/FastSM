@@ -242,13 +242,13 @@ class mastodon(object):
 			except:
 				self.prefs.search_timelines.remove(q)
 
-		# Restore custom timelines (local, federated)
+		# Restore custom timelines (local, federated, favourites, bookmarks)
 		for ct in list(self.prefs.custom_timelines):
 			try:
 				tl_type = ct.get('type', '')
 				tl_id = ct.get('id', '')
 				tl_name = ct.get('name', tl_type.title())
-				if tl_type in ('local', 'federated'):
+				if tl_type in ('local', 'federated', 'favourites', 'bookmarks'):
 					self.timelines.append(timeline.timeline(self, name=tl_name, type=tl_type, data=tl_id, silent=True))
 			except:
 				self.prefs.custom_timelines.remove(ct)
@@ -384,7 +384,7 @@ class mastodon(object):
 				tl_type = ct.get('type', '')
 				tl_id = ct.get('id', '')
 				tl_name = ct.get('name', 'Feed')
-				if tl_type in ('feed', 'favourites'):
+				if tl_type in ('feed', 'favourites', 'bookmarks'):
 					self.timelines.append(timeline.timeline(self, name=tl_name, type=tl_type, data=tl_id, silent=True))
 			except:
 				self.prefs.custom_timelines.remove(ct)

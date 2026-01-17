@@ -1021,9 +1021,26 @@ class Application:
 			pass
 
 	def demojify(self, text):
-		text = str(text).encode("ascii", "ignore")
-		text = text.decode()
-		return text
+		"""Remove emoji from text while preserving accented characters."""
+		import re
+		# Pattern to match most emoji ranges
+		emoji_pattern = re.compile(
+			"["
+			"\U0001F300-\U0001F9FF"  # Miscellaneous Symbols and Pictographs, Emoticons, etc.
+			"\U0001FA00-\U0001FAFF"  # Chess, symbols, etc.
+			"\U00002600-\U000027BF"  # Misc symbols, Dingbats
+			"\U0001F600-\U0001F64F"  # Emoticons
+			"\U0001F680-\U0001F6FF"  # Transport and Map
+			"\U0001F1E0-\U0001F1FF"  # Flags
+			"\U00002300-\U000023FF"  # Misc Technical
+			"\U00002B50-\U00002B55"  # Stars
+			"\U0000FE00-\U0000FE0F"  # Variation Selectors
+			"\U0000200D"             # Zero Width Joiner
+			"\U00003030\U000025AA\U000025AB\U000025B6\U000025C0\U000025FB-\U000025FE"
+			"]+",
+			flags=re.UNICODE
+		)
+		return emoji_pattern.sub('', str(text))
 
 	def handle_error(self, error, name="Unknown"):
 		"""Handle API errors from Mastodon or Bluesky"""
