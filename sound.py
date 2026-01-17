@@ -106,6 +106,14 @@ def _cleanup_finished_handles():
 			pass
 	handles = active
 
+def _get_bundled_path():
+	"""Get the path to bundled resources (for PyInstaller frozen apps)."""
+	import sys
+	if getattr(sys, 'frozen', False):
+		# Running as frozen app (PyInstaller)
+		return getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+	return None
+
 def play(account, filename, pack="", wait=False):
 	global handles
 	app = account.app
@@ -113,15 +121,30 @@ def play(account, filename, pack="", wait=False):
 	# Clean up finished handles before playing new sound
 	_cleanup_finished_handles()
 
+	# Get bundled path for frozen apps (macOS app bundle, Windows exe)
+	bundled_path = _get_bundled_path()
+
+	path = None
+	# Check user config first (highest priority)
 	if os.path.exists(app.confpath + "/sounds/" + account.prefs.soundpack + "/" + filename + ".ogg"):
 		path = app.confpath + "/sounds/" + account.prefs.soundpack + "/" + filename + ".ogg"
+	# Check relative path (for development)
 	elif os.path.exists("sounds/" + account.prefs.soundpack + "/" + filename + ".ogg"):
 		path = "sounds/" + account.prefs.soundpack + "/" + filename + ".ogg"
+	# Check bundled path (for frozen apps)
+	elif bundled_path and os.path.exists(bundled_path + "/sounds/" + account.prefs.soundpack + "/" + filename + ".ogg"):
+		path = bundled_path + "/sounds/" + account.prefs.soundpack + "/" + filename + ".ogg"
+	# Fall back to default soundpack - user config
 	elif os.path.exists(app.confpath + "/sounds/default/" + filename + ".ogg"):
 		path = app.confpath + "/sounds/default/" + filename + ".ogg"
+	# Fall back to default - relative path
 	elif os.path.exists("sounds/default/" + filename + ".ogg"):
 		path = "sounds/default/" + filename + ".ogg"
-	else:
+	# Fall back to default - bundled path
+	elif bundled_path and os.path.exists(bundled_path + "/sounds/default/" + filename + ".ogg"):
+		path = bundled_path + "/sounds/default/" + filename + ".ogg"
+
+	if not path:
 		return
 	try:
 		handle = stream.FileStream(file=path)

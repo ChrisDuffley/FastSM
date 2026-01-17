@@ -5,15 +5,25 @@ import wx
 from . import main, theme
 from application import get_app
 
+def _get_bundled_path():
+	"""Get the path to bundled resources (for PyInstaller frozen apps)."""
+	if getattr(sys, 'frozen', False):
+		return getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+	return None
+
 class general(wx.Panel, wx.Dialog):
 	def __init__(self, account, parent):
+		# Get bundled path for frozen apps
+		bundled_path = _get_bundled_path()
+
 		# Try multiple paths for the preview sound
 		self.snd = None
 		sound_paths = [
 			get_app().confpath+"/sounds/default/boundary.ogg",
 			"sounds/default/boundary.ogg",
-			os.path.join(os.path.dirname(sys.executable), "sounds/default/boundary.ogg"),
 		]
+		if bundled_path:
+			sound_paths.append(os.path.join(bundled_path, "sounds/default/boundary.ogg"))
 		for path in sound_paths:
 			if os.path.exists(path):
 				try:
@@ -30,32 +40,46 @@ class general(wx.Panel, wx.Dialog):
 		self.soundpackslist = wx.ListBox(self, -1, name="Soundpacks")
 		self.soundpack_box.Add(self.soundpackslist, 0, wx.ALL, 10)
 		self.soundpackslist.Bind(wx.EVT_LISTBOX, self.on_soundpacks_list_change)
+
+		# Collect soundpacks from all locations
+		all_packs = set()
+
+		# Check user config path
 		sounds_path = get_app().confpath+"/sounds"
-		dirs = []
 		try:
 			if os.path.exists(sounds_path):
-				dirs = os.listdir(sounds_path)
-				for i in range(0,len(dirs)):
-					# Only include directories, skip hidden files and underscore-prefixed items
-					if not dirs[i].startswith("_") and not dirs[i].startswith(".") and os.path.isdir(os.path.join(sounds_path, dirs[i])):
-						self.soundpackslist.Insert(dirs[i],self.soundpackslist.GetCount())
-						if account.prefs.soundpack==dirs[i]:
-							self.soundpackslist.SetSelection(self.soundpackslist.GetCount()-1)
-							self.sp=dirs[i]
+				for item in os.listdir(sounds_path):
+					if not item.startswith("_") and not item.startswith(".") and os.path.isdir(os.path.join(sounds_path, item)):
+						all_packs.add(item)
 		except:
 			pass
+
+		# Check relative path (development)
 		try:
 			if os.path.exists("sounds"):
-				dirs2 = os.listdir("sounds")
-				for i in range(0,len(dirs2)):
-					# Only include directories, skip hidden files and underscore-prefixed items
-					if not dirs2[i].startswith("_") and not dirs2[i].startswith(".") and dirs2[i] not in dirs and os.path.isdir(os.path.join("sounds", dirs2[i])):
-						self.soundpackslist.Insert(dirs2[i],self.soundpackslist.GetCount())
-						if account.prefs.soundpack==dirs2[i]:
-							self.soundpackslist.SetSelection(self.soundpackslist.GetCount()-1)
-							self.sp=dirs2[i]
+				for item in os.listdir("sounds"):
+					if not item.startswith("_") and not item.startswith(".") and os.path.isdir(os.path.join("sounds", item)):
+						all_packs.add(item)
 		except:
 			pass
+
+		# Check bundled path (frozen apps)
+		if bundled_path:
+			bundled_sounds = os.path.join(bundled_path, "sounds")
+			try:
+				if os.path.exists(bundled_sounds):
+					for item in os.listdir(bundled_sounds):
+						if not item.startswith("_") and not item.startswith(".") and os.path.isdir(os.path.join(bundled_sounds, item)):
+							all_packs.add(item)
+			except:
+				pass
+
+		# Add soundpacks to list
+		for pack in sorted(all_packs):
+			self.soundpackslist.Insert(pack, self.soundpackslist.GetCount())
+			if account.prefs.soundpack == pack:
+				self.soundpackslist.SetSelection(self.soundpackslist.GetCount()-1)
+				self.sp = pack
 		if not hasattr(self,"sp"):
 			self.sp="default"
 		self.soundpan_label = wx.StaticText(self, -1, "Sound pan")
