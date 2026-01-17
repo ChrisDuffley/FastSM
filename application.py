@@ -365,6 +365,27 @@ class Application:
 					text = f"CW: {spoiler}. {text}"
 				# 'ignore' mode: just use the text as-is
 
+			# Handle server-side filter warnings (action="warn")
+			# Uses the same cw_mode setting as content warnings
+			filtered = getattr(s, 'filtered', None)
+			if filtered and not ignore_cw:
+				# Get filter titles from the matched filters
+				filter_titles = []
+				for result in filtered:
+					filter_obj = getattr(result, 'filter', None)
+					if filter_obj:
+						title = getattr(filter_obj, 'title', None)
+						if title:
+							filter_titles.append(title)
+				if filter_titles:
+					filter_warning = "Filtered: " + ", ".join(filter_titles)
+					cw_mode = getattr(self.prefs, 'cw_mode', 'hide')
+					if cw_mode == 'hide':
+						text = filter_warning
+					elif cw_mode == 'show':
+						text = f"{filter_warning}. {text}"
+					# 'ignore' mode: just use the text as-is
+
 			# Add media descriptions to text (only for non-reblogs to avoid duplication)
 			if hasattr(s, 'media_attachments') and s.media_attachments:
 				for media in s.media_attachments:

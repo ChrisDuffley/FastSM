@@ -100,6 +100,19 @@ class ViewGui(wx.Dialog):
 		if spoiler:
 			extra += "Content Warning: " + spoiler + "\r\n"
 
+		# Server-side filter warnings
+		filtered = getattr(self.status, 'filtered', None)
+		if filtered:
+			filter_titles = []
+			for result in filtered:
+				filter_obj = getattr(result, 'filter', None)
+				if filter_obj:
+					title = getattr(filter_obj, 'title', None)
+					if title:
+						filter_titles.append(title)
+			if filter_titles:
+				extra += "Filtered by: " + ", ".join(filter_titles) + "\r\n"
+
 		# Visibility (Bluesky doesn't have visibility, so it may be None)
 		visibility = getattr(self.status, 'visibility', None) or 'public'
 		extra += "Visibility: " + str(visibility) + "\r\n"
@@ -817,6 +830,21 @@ class NotificationViewGui(wx.Dialog):
 			spoiler = getattr(self.status, 'spoiler_text', '')
 			if spoiler:
 				self.post_text.SetValue(f"[CW: {spoiler}]\r\n\r\n{post_content}")
+
+			# Show filter warning if present
+			filtered = getattr(self.status, 'filtered', None)
+			if filtered:
+				filter_titles = []
+				for result in filtered:
+					filter_obj = getattr(result, 'filter', None)
+					if filter_obj:
+						title = getattr(filter_obj, 'title', None)
+						if title:
+							filter_titles.append(title)
+				if filter_titles:
+					filter_warning = "[Filtered: " + ", ".join(filter_titles) + "]"
+					current = self.post_text.GetValue()
+					self.post_text.SetValue(f"{filter_warning}\r\n\r\n{current}")
 
 		# Action buttons
 		if notif_account:
