@@ -988,7 +988,19 @@ class MainGui(wx.Frame):
 				is_bookmarked = getattr(notif_status, 'bookmarked', False) if notif_status else False
 				platform_type = getattr(get_app().currentAccount.prefs, 'platform_type', 'mastodon')
 
-				# Check for poll in notification status - show at top of menu
+				# View Image - only show if notification post has image attachments (at top of menu)
+				has_images = False
+				if notif_status and hasattr(notif_status, 'media_attachments') and notif_status.media_attachments:
+					for media in notif_status.media_attachments:
+						if getattr(media, 'type', '').lower() == 'image':
+							has_images = True
+							break
+				if has_images:
+					m_view_image = menu.Append(-1, "View image")
+					self.Bind(wx.EVT_MENU, self.OnViewImage, m_view_image)
+					menu.AppendSeparator()
+
+				# Check for poll in notification status
 				if notif_status:
 					poll = getattr(notif_status, 'poll', None)
 					if poll:
@@ -1027,17 +1039,6 @@ class MainGui(wx.Frame):
 
 				m_post_url = menu.Append(-1, "Open post URL")
 				self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
-
-				# View Image - only show if notification post has image attachments
-				has_images = False
-				if notif_status and hasattr(notif_status, 'media_attachments') and notif_status.media_attachments:
-					for media in notif_status.media_attachments:
-						if getattr(media, 'type', '').lower() == 'image':
-							has_images = True
-							break
-				if has_images:
-					m_view_image = menu.Append(-1, "View image")
-					self.Bind(wx.EVT_MENU, self.OnViewImage, m_view_image)
 
 				menu.AppendSeparator()
 
@@ -1112,7 +1113,19 @@ class MainGui(wx.Frame):
 			is_bookmarked = getattr(status_to_check, 'bookmarked', False)
 			platform_type = getattr(get_app().currentAccount.prefs, 'platform_type', 'mastodon')
 
-			# Check for poll first - show at top of menu
+			# View Image - only show if post has image attachments (at top of menu)
+			has_images = False
+			if hasattr(status_to_check, 'media_attachments') and status_to_check.media_attachments:
+				for media in status_to_check.media_attachments:
+					if getattr(media, 'type', '').lower() == 'image':
+						has_images = True
+						break
+			if has_images:
+				m_view_image = menu.Append(-1, "View image")
+				self.Bind(wx.EVT_MENU, self.OnViewImage, m_view_image)
+				menu.AppendSeparator()
+
+			# Check for poll - show at top of menu
 			poll = getattr(status_to_check, 'poll', None)
 			if poll:
 				is_expired = getattr(poll, 'expired', False)
@@ -1153,17 +1166,6 @@ class MainGui(wx.Frame):
 
 			m_post_url = menu.Append(-1, "Open post URL")
 			self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
-
-			# View Image - only show if post has image attachments
-			has_images = False
-			if hasattr(status_to_check, 'media_attachments') and status_to_check.media_attachments:
-				for media in status_to_check.media_attachments:
-					if getattr(media, 'type', '').lower() == 'image':
-						has_images = True
-						break
-			if has_images:
-				m_view_image = menu.Append(-1, "View image")
-				self.Bind(wx.EVT_MENU, self.OnViewImage, m_view_image)
 
 			menu.AppendSeparator()
 
