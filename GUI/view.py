@@ -135,12 +135,29 @@ class ViewGui(wx.Dialog):
 		self.view_orig.Bind(wx.EVT_BUTTON, self.OnViewOrig)
 		self.main_box.Add(self.view_orig, 0, wx.ALL, 10)
 
-		self.view_boosters = wx.Button(self.panel, -1, "&View Boosters")
+		self.view_boosters = wx.Button(self.panel, -1, "View &Boosters")
 		self.view_boosters.Bind(wx.EVT_BUTTON, self.OnViewBoosters)
 		self.main_box.Add(self.view_boosters, 0, wx.ALL, 10)
 
 		if getattr(self.status, 'reblogs_count', 0) == 0:
 			self.view_boosters.Enable(False)
+
+		self.view_favoriters = wx.Button(self.panel, -1, "View Favo&riters")
+		self.view_favoriters.Bind(wx.EVT_BUTTON, self.OnViewFavoriters)
+		self.main_box.Add(self.view_favoriters, 0, wx.ALL, 10)
+
+		if getattr(self.status, 'favourites_count', 0) == 0:
+			self.view_favoriters.Enable(False)
+
+		self.view_history = wx.Button(self.panel, -1, "View Edit &History")
+		self.view_history.Bind(wx.EVT_BUTTON, self.OnViewEditHistory)
+		self.main_box.Add(self.view_history, 0, wx.ALL, 10)
+
+		# Only enable edit history if the post has been edited
+		platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+		has_edits = getattr(self.status, 'edited_at', None) is not None
+		if not has_edits or platform_type != 'mastodon':
+			self.view_history.Enable(False)
 
 		# Check if this is a boost or quote
 		has_reblog = hasattr(self.status, 'reblog') and self.status.reblog
@@ -268,6 +285,36 @@ class ViewGui(wx.Dialog):
 			self.account.app.handle_error(error)
 			return
 		g = UserViewGui(self.account, users, "Boosters")
+		g.Show()
+
+	def OnViewFavoriters(self, event):
+		users = []
+		try:
+			status_id = self.status.id
+			if hasattr(self.status, 'reblog') and self.status.reblog:
+				status_id = self.status.reblog.id
+			favoriters = self.account.api.status_favourited_by(id=status_id)
+			users = list(favoriters)
+		except Exception as error:
+			self.account.app.handle_error(error)
+			return
+		g = UserViewGui(self.account, users, "Favoriters")
+		g.Show()
+
+	def OnViewEditHistory(self, event):
+		try:
+			status_id = self.status.id
+			if hasattr(self.status, 'reblog') and self.status.reblog:
+				status_id = self.status.reblog.id
+			history = self.account.api.status_history(id=status_id)
+			if not history:
+				import speak
+				speak.speak("No edit history available")
+				return
+		except Exception as error:
+			self.account.app.handle_error(error)
+			return
+		g = EditHistoryDialog(self.account, history)
 		g.Show()
 
 	def OnFavourite(self, event):
@@ -1131,3 +1178,118 @@ class ViewImageGui(wx.Dialog):
 
 		thread = threading.Thread(target=get_description, daemon=True)
 		thread.start()
+
+
+class EditHistoryDialog(wx.Dialog):
+	"""Dialog for viewing the edit history of a post."""
+
+	def __init__(self, account, history):
+		self.account = account
+		self.history = history  # List of StatusEdit objects, oldest first
+		self.current_index = len(history) - 1  # Start at most recent
+
+		wx.Dialog.__init__(self, None, title="Edit History", size=(500, 400))
+		self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+		self.panel = wx.Panel(self)
+		self.main_box = wx.BoxSizer(wx.VERTICAL)
+
+		# Version selector
+		self.version_label = wx.StaticText(self.panel, -1, "&Version:")
+		self.main_box.Add(self.version_label, 0, wx.LEFT | wx.TOP, 10)
+
+		self.version_list = wx.ListBox(self.panel, -1, size=(450, 100), name="Version")
+		self.main_box.Add(self.version_list, 0, wx.EXPAND | wx.ALL, 10)
+		self.version_list.Bind(wx.EVT_LISTBOX, self.OnVersionChange)
+
+		# Populate version list (newest first for display)
+		for i, edit in enumerate(reversed(history)):
+			created = getattr(edit, 'created_at', None)
+			date_str = account.app.parse_date(created) if created else 'Unknown'
+			if i == 0:
+				label = f"Current version - {date_str}"
+			elif i == len(history) - 1:
+				label = f"Original - {date_str}"
+			else:
+				label = f"Version {len(history) - i} - {date_str}"
+			self.version_list.Append(label)
+
+		self.version_list.SetSelection(0)
+
+		# Content display
+		self.content_label = wx.StaticText(self.panel, -1, "&Content:")
+		self.main_box.Add(self.content_label, 0, wx.LEFT | wx.TOP, 10)
+
+		self.content = wx.TextCtrl(self.panel, -1, "", style=wx.TE_MULTILINE | wx.TE_READONLY, size=(450, 150), name="Content")
+		self.main_box.Add(self.content, 1, wx.EXPAND | wx.ALL, 10)
+
+		# Details display
+		self.details_label = wx.StaticText(self.panel, -1, "&Details:")
+		self.main_box.Add(self.details_label, 0, wx.LEFT | wx.TOP, 10)
+
+		self.details = wx.TextCtrl(self.panel, -1, "", style=wx.TE_MULTILINE | wx.TE_READONLY, size=(450, 60), name="Details")
+		self.main_box.Add(self.details, 0, wx.EXPAND | wx.ALL, 10)
+
+		# Close button
+		self.close_btn = wx.Button(self.panel, wx.ID_CANCEL, "&Close")
+		self.close_btn.Bind(wx.EVT_BUTTON, self.OnClose)
+		self.main_box.Add(self.close_btn, 0, wx.ALL, 10)
+
+		self.panel.SetSizer(self.main_box)
+		self.panel.Layout()
+
+		# Load initial version
+		self._load_version(0)
+
+		self.version_list.SetFocus()
+		theme.apply_theme(self)
+
+	def OnVersionChange(self, event):
+		selection = self.version_list.GetSelection()
+		if selection != wx.NOT_FOUND:
+			self._load_version(selection)
+
+	def _load_version(self, display_index):
+		"""Load a version by display index (0 = newest)."""
+		# Convert display index to history index (display is reversed)
+		history_index = len(self.history) - 1 - display_index
+		if history_index < 0 or history_index >= len(self.history):
+			return
+
+		edit = self.history[history_index]
+
+		# Get content
+		content = getattr(edit, 'content', '')
+		mentions = getattr(edit, 'mentions', [])
+		content_text = self.account.app.html_to_text_for_edit(content, mentions)
+		self.content.SetValue(content_text)
+
+		# Build details
+		details_parts = []
+
+		spoiler = getattr(edit, 'spoiler_text', '')
+		if spoiler:
+			details_parts.append(f"Content Warning: {spoiler}")
+
+		sensitive = getattr(edit, 'sensitive', False)
+		if sensitive:
+			details_parts.append("Marked as sensitive")
+
+		# Media attachments
+		media = getattr(edit, 'media_attachments', [])
+		if media:
+			details_parts.append(f"Media attachments: {len(media)}")
+
+		# Poll
+		poll = getattr(edit, 'poll', None)
+		if poll:
+			details_parts.append("Has poll")
+
+		self.details.SetValue("\n".join(details_parts) if details_parts else "No additional details")
+
+		if platform.system() == "Darwin":
+			self.content.SetValue(self.content.GetValue().replace("\r", ""))
+			self.details.SetValue(self.details.GetValue().replace("\r", ""))
+
+	def OnClose(self, event):
+		self.Destroy()
