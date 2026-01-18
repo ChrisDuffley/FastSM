@@ -191,12 +191,7 @@ def copy_vlc_libraries(dest_dir: Path, script_dir: Path = None):
             print("  Copying plugins folder...")
             shutil.copytree(plugins_src, plugins_dst)
 
-        # Copy lua folder (needed for YouTube and other playlist parsing)
-        lua_src = vlc_install / 'lua'
-        if lua_src.exists():
-            lua_dst = vlc_dst / 'lua'
-            print("  Copying lua folder...")
-            shutil.copytree(lua_src, lua_dst)
+        # Note: lua folder no longer needed - yt-dlp handles YouTube URL extraction
 
     elif sys.platform == 'darwin':
         # macOS: copy lib folder

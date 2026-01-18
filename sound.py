@@ -23,6 +23,8 @@ def _setup_vlc_path():
 			# Set environment variables for python-vlc to find bundled libraries
 			os.environ['PYTHON_VLC_MODULE_PATH'] = vlc_path
 			os.environ['PYTHON_VLC_LIB_PATH'] = os.path.join(vlc_path, 'libvlc.dll') if sys.platform == 'win32' else vlc_path
+			# Set VLC_PLUGIN_PATH so VLC can find its plugins
+			os.environ['VLC_PLUGIN_PATH'] = os.path.join(vlc_path, 'plugins')
 			# Also add to PATH for DLL loading on Windows
 			if sys.platform == 'win32':
 				os.environ['PATH'] = vlc_path + os.pathsep + os.environ.get('PATH', '')
@@ -33,6 +35,8 @@ def _setup_vlc_path():
 		if os.path.exists(vlc_path):
 			os.environ['PYTHON_VLC_MODULE_PATH'] = vlc_path
 			os.environ['PYTHON_VLC_LIB_PATH'] = os.path.join(vlc_path, 'libvlc.dll') if sys.platform == 'win32' else vlc_path
+			# Set VLC_PLUGIN_PATH so VLC can find its plugins
+			os.environ['VLC_PLUGIN_PATH'] = os.path.join(vlc_path, 'plugins')
 			if sys.platform == 'win32':
 				os.environ['PATH'] = vlc_path + os.pathsep + os.environ.get('PATH', '')
 			return vlc_path
@@ -44,8 +48,9 @@ _vlc_path = _setup_vlc_path()
 try:
 	import vlc
 	# Test that VLC libraries are actually available
-	_test_instance = vlc.Instance('--no-video')
+	_test_instance = vlc.Instance('--quiet')
 	if _test_instance:
+		_test_instance.log_unset()
 		_test_instance.release()
 		VLC_AVAILABLE = True
 	else:
@@ -54,9 +59,85 @@ except (ImportError, OSError, FileNotFoundError, AttributeError):
 	VLC_AVAILABLE = False
 	vlc = None
 
+def _find_ytdlp_executable():
+	"""Find yt-dlp executable path."""
+	import shutil
+	from application import get_app
+
+	# Check user-configured path first
+	try:
+		app = get_app()
+		custom_path = getattr(app.prefs, 'ytdlp_path', '')
+		if custom_path and os.path.isfile(custom_path):
+			return custom_path
+	except:
+		pass
+
+	# Check bundled location
+	if getattr(sys, 'frozen', False):
+		# Frozen app - check next to executable
+		bundled = os.path.join(os.path.dirname(sys.executable), 'yt-dlp.exe')
+		if os.path.isfile(bundled):
+			return bundled
+	else:
+		# Development - check in project folder
+		bundled = os.path.join(os.path.dirname(__file__), 'yt-dlp.exe')
+		if os.path.isfile(bundled):
+			return bundled
+
+	# Check system PATH
+	system_ytdlp = shutil.which('yt-dlp') or shutil.which('yt-dlp.exe')
+	if system_ytdlp:
+		return system_ytdlp
+
+	return None
+
+YTDLP_PATH = _find_ytdlp_executable()
+
 out = o.Output()
 handles = []  # List of active sound handles for concurrent playback
 player = None  # Media player for URL streams (VLC or sound_lib)
+
+def _extract_stream_url(url):
+	"""Use yt-dlp executable to extract direct stream URL from YouTube and similar services."""
+	import subprocess
+	import json
+
+	# Re-check for yt-dlp in case user configured it after startup
+	global YTDLP_PATH
+	if not YTDLP_PATH:
+		YTDLP_PATH = _find_ytdlp_executable()
+	if not YTDLP_PATH:
+		return url
+
+	# Only use yt-dlp for URLs it supports (YouTube, etc.)
+	youtube_patterns = [
+		'youtube.com', 'youtu.be',
+		'twitter.com', 'x.com',
+		'tiktok.com',
+		'twitch.tv',
+	]
+
+	if not any(pattern in url.lower() for pattern in youtube_patterns):
+		return url
+
+	try:
+		# Call yt-dlp to get stream URL
+		result = subprocess.run(
+			[YTDLP_PATH, '-f', 'bestaudio/best', '-g', '--no-warnings', '-q', url],
+			capture_output=True,
+			text=True,
+			timeout=30,
+			creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+		)
+		if result.returncode == 0 and result.stdout.strip():
+			return result.stdout.strip().split('\n')[0]  # First URL if multiple
+	except subprocess.TimeoutExpired:
+		speak.speak("Timed out extracting stream URL")
+	except Exception as e:
+		speak.speak(f"Could not extract stream URL: {e}")
+	return url
+
 player_type = None  # 'vlc' or 'soundlib' to track which player is active
 vlc_instance = None  # VLC instance (reused for efficiency)
 
@@ -228,14 +309,20 @@ def play_url(url, vlc_only=False):
 		try:
 			# Create VLC instance if needed
 			if vlc_instance is None:
-				vlc_args = ['--no-video']
+				# Use --quiet like TWBlue does, add network caching for streams
+				vlc_args = ['--quiet', '--network-caching=1000']
 				# If using bundled VLC, set paths
 				if _vlc_path:
 					vlc_args.append(f'--data-path={_vlc_path}')
 				vlc_instance = vlc.Instance(' '.join(vlc_args))
+				vlc_instance.log_unset()
+
+			# Extract actual stream URL for YouTube and similar services
+			stream_url = _extract_stream_url(url)
+
 			# Create media player
 			player = vlc_instance.media_player_new()
-			media = vlc_instance.media_new(url)
+			media = vlc_instance.media_new(stream_url)
 			player.set_media(media)
 			# Apply media volume from preferences (VLC uses 0-100)
 			volume = int(getattr(get_app().prefs, 'media_volume', 1.0) * 100)

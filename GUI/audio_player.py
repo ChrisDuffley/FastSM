@@ -242,7 +242,9 @@ class AudioPlayerDialog(wx.Dialog):
 				# VLC's get_state() returns the current state
 				import vlc
 				state = sound.player.get_state()
-				if state == vlc.State.Ended or state == vlc.State.Error:
+				# Only close for terminal states (Ended, Error)
+				# Don't close for Stopped - VLC may transition through it
+				if state in (vlc.State.Ended, vlc.State.Error):
 					self._close_dialog()
 					return
 			else:
@@ -320,18 +322,21 @@ def show_audio_player(parent=None, silent=False):
 			speak.speak("No audio playing")
 		return None
 
-	# Check if player exists - it might not be playing yet but will be shortly
+	# Check if player is active (playing, buffering, opening, paused, or stopped but not ended)
 	try:
 		if sound.player_type == 'vlc':
-			# VLC's is_playing() returns 1 if playing, 0 otherwise
-			is_playing = sound.player.is_playing()
+			import vlc
+			state = sound.player.get_state()
+			# Consider active if not in terminal states
+			# Stopped is OK - VLC transitions through it
+			is_active = state not in (vlc.State.NothingSpecial, vlc.State.Ended, vlc.State.Error)
 		else:
 			# sound_lib uses is_playing property
-			is_playing = sound.player.is_playing
+			is_active = sound.player.is_playing
 	except:
-		is_playing = False
+		is_active = False
 
-	if not is_playing and not silent:
+	if not is_active and not silent:
 		import speak
 		speak.speak("No audio playing")
 		return None

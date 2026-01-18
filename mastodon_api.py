@@ -103,12 +103,32 @@ class mastodon(object):
 		self.prefs.client_id = self.prefs.get("client_id", "")
 		self.prefs.client_secret = self.prefs.get("client_secret", "")
 
-		# Get instance URL if not set
-		if self.prefs.instance_url == "":
+		# Get instance URL if not set or invalid
+		def is_valid_instance_url(url):
+			"""Check if URL is a valid instance URL with a host."""
+			if not url or not url.strip():
+				return False
+			# Must have a host after the protocol
+			if url.startswith("https://"):
+				host = url[8:]
+			elif url.startswith("http://"):
+				host = url[7:]
+			else:
+				host = url
+			# Host must have at least one dot or be localhost
+			return bool(host) and ('.' in host or host.startswith('localhost'))
+
+		if not is_valid_instance_url(self.prefs.instance_url):
+			# Clear credentials if instance URL is invalid (they're tied to the instance)
+			self.prefs.client_id = ""
+			self.prefs.client_secret = ""
+			self.prefs.access_token = ""
+
 			self.prefs.instance_url = ask(caption="Mastodon Instance",
 				message="Enter your Mastodon instance URL (e.g., mastodon.social, fosstodon.org):")
-			if self.prefs.instance_url is None:
+			if self.prefs.instance_url is None or not self.prefs.instance_url.strip():
 				_exit_app()
+			self.prefs.instance_url = self.prefs.instance_url.strip()
 			# Ensure https://
 			if not self.prefs.instance_url.startswith("https://") and not self.prefs.instance_url.startswith("http://"):
 				self.prefs.instance_url = "https://" + self.prefs.instance_url

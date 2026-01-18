@@ -197,7 +197,203 @@ class advanced(wx.Panel, wx.Dialog):
 		dark_mode_map = {'off': 0, 'on': 1, 'auto': 2}
 		self.dark_mode.SetSelection(dark_mode_map.get(get_app().prefs.dark_mode, 0))
 		self.main_box.Add(self.dark_mode, 0, wx.ALL, 10)
+
+		# yt-dlp path
+		ytdlp_label = wx.StaticText(self, -1, "yt-dlp path (for YouTube/Twitter audio, leave blank to use bundled):")
+		self.main_box.Add(ytdlp_label, 0, wx.LEFT | wx.TOP, 10)
+		ytdlp_sizer = wx.BoxSizer(wx.HORIZONTAL)
+		self.ytdlp_path = wx.TextCtrl(self, -1, get_app().prefs.ytdlp_path, name="yt-dlp path")
+		ytdlp_sizer.Add(self.ytdlp_path, 1, wx.EXPAND | wx.RIGHT, 5)
+		self.ytdlp_browse = wx.Button(self, -1, "Browse...")
+		self.ytdlp_browse.Bind(wx.EVT_BUTTON, self.on_ytdlp_browse)
+		ytdlp_sizer.Add(self.ytdlp_browse, 0, wx.RIGHT, 5)
+		self.ytdlp_download = wx.Button(self, -1, "Download/Update")
+		self.ytdlp_download.Bind(wx.EVT_BUTTON, self.on_ytdlp_download)
+		ytdlp_sizer.Add(self.ytdlp_download, 0)
+		self.main_box.Add(ytdlp_sizer, 0, wx.EXPAND | wx.ALL, 10)
+
+		# VLC download button
+		vlc_sizer = wx.BoxSizer(wx.HORIZONTAL)
+		vlc_label = wx.StaticText(self, -1, "VLC libraries (required for media playback):")
+		self.main_box.Add(vlc_label, 0, wx.LEFT | wx.TOP, 10)
+		self.vlc_download = wx.Button(self, -1, "Download VLC")
+		self.vlc_download.Bind(wx.EVT_BUTTON, self.on_vlc_download)
+		vlc_sizer.Add(self.vlc_download, 0)
+		self.main_box.Add(vlc_sizer, 0, wx.ALL, 10)
+
 		self.SetSizer(self.main_box)
+
+	def on_ytdlp_browse(self, event):
+		"""Browse for yt-dlp executable."""
+		with wx.FileDialog(self, "Select yt-dlp executable",
+			wildcard="Executable files (*.exe)|*.exe|All files (*.*)|*.*",
+			style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dlg:
+			if dlg.ShowModal() == wx.ID_OK:
+				self.ytdlp_path.SetValue(dlg.GetPath())
+
+	def on_ytdlp_download(self, event):
+		"""Download or update yt-dlp."""
+		import threading
+		import subprocess
+		import requests
+		import os
+		import sys
+		import speak
+
+		# Determine target path
+		custom_path = self.ytdlp_path.GetValue().strip()
+		if custom_path and os.path.isfile(custom_path):
+			ytdlp_path = custom_path
+		elif getattr(sys, 'frozen', False):
+			ytdlp_path = os.path.join(os.path.dirname(sys.executable), 'yt-dlp.exe')
+		else:
+			ytdlp_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'yt-dlp.exe')
+
+		def do_download_or_update():
+			try:
+				if os.path.isfile(ytdlp_path):
+					# Update existing yt-dlp
+					speak.speak("Updating yt-dlp...")
+					result = subprocess.run(
+						[ytdlp_path, '-U'],
+						capture_output=True,
+						text=True,
+						timeout=60,
+						creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+					)
+					if result.returncode == 0:
+						speak.speak("yt-dlp updated successfully")
+					else:
+						# If update fails, might need to download fresh
+						speak.speak("Update failed, downloading fresh copy...")
+						download_ytdlp(ytdlp_path)
+				else:
+					# Download new yt-dlp
+					download_ytdlp(ytdlp_path)
+			except Exception as e:
+				wx.CallAfter(wx.MessageBox, f"Error: {e}", "yt-dlp Download", wx.OK | wx.ICON_ERROR)
+
+		def download_ytdlp(dest_path):
+			speak.speak("Downloading yt-dlp...")
+			try:
+				# Get latest release URL from GitHub API
+				api_url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+				response = requests.get(api_url, timeout=30)
+				response.raise_for_status()
+				release = response.json()
+
+				# Find the exe asset
+				exe_url = None
+				for asset in release.get('assets', []):
+					if asset['name'] == 'yt-dlp.exe':
+						exe_url = asset['browser_download_url']
+						break
+
+				if not exe_url:
+					speak.speak("Could not find yt-dlp.exe in latest release")
+					return
+
+				# Download the exe
+				exe_response = requests.get(exe_url, timeout=120, stream=True)
+				exe_response.raise_for_status()
+
+				with open(dest_path, 'wb') as f:
+					for chunk in exe_response.iter_content(chunk_size=8192):
+						f.write(chunk)
+
+				speak.speak("yt-dlp downloaded successfully")
+				# Update the path field on main thread
+				wx.CallAfter(self.ytdlp_path.SetValue, dest_path)
+			except Exception as e:
+				speak.speak(f"Download failed: {e}")
+
+		# Run in background thread
+		threading.Thread(target=do_download_or_update, daemon=True).start()
+
+	def on_vlc_download(self, event):
+		"""Download VLC libraries if not found."""
+		import threading
+		import requests
+		import zipfile
+		import io
+		import os
+		import sys
+		import speak
+
+		def find_existing_vlc():
+			"""Check all locations where VLC could be installed."""
+			# Check bundled location (app folder)
+			if getattr(sys, 'frozen', False):
+				if sys.platform == 'darwin':
+					bundled = os.path.join(os.path.dirname(sys.executable), '..', 'Resources', 'vlc')
+				else:
+					bundled = os.path.join(os.path.dirname(sys.executable), 'vlc')
+			else:
+				bundled = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'vlc')
+
+			if sys.platform == 'win32':
+				if os.path.exists(bundled) and os.path.isfile(os.path.join(bundled, 'libvlc.dll')):
+					return bundled
+			elif os.path.exists(bundled):
+				return bundled
+
+			# Check system VLC installation paths
+			if sys.platform == 'win32':
+				system_paths = [
+					os.path.join(os.environ.get('PROGRAMFILES', ''), 'VideoLAN', 'VLC'),
+					os.path.join(os.environ.get('PROGRAMFILES(X86)', ''), 'VideoLAN', 'VLC'),
+					'C:\\Program Files\\VideoLAN\\VLC',
+					'C:\\Program Files (x86)\\VideoLAN\\VLC',
+				]
+				for path in system_paths:
+					if path and os.path.exists(path) and os.path.isfile(os.path.join(path, 'libvlc.dll')):
+						return path
+			elif sys.platform == 'darwin':
+				system_paths = [
+					'/Applications/VLC.app/Contents/MacOS',
+					os.path.expanduser('~/Applications/VLC.app/Contents/MacOS'),
+				]
+				for path in system_paths:
+					if os.path.exists(path):
+						return path
+
+			return None
+
+		# Determine VLC target path for download
+		if getattr(sys, 'frozen', False):
+			vlc_path = os.path.join(os.path.dirname(sys.executable), 'vlc')
+		else:
+			vlc_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'vlc')
+
+		def do_download():
+			try:
+				# Check if VLC already exists anywhere
+				existing = find_existing_vlc()
+				if existing:
+					speak.speak(f"VLC is already available at {existing}")
+					return
+
+				speak.speak("Downloading VLC libraries...")
+
+				# Download the zip file
+				vlc_url = "https://masonasons.me/vlc.zip"
+				response = requests.get(vlc_url, timeout=120, stream=True)
+				response.raise_for_status()
+
+				# Extract to app folder
+				speak.speak("Extracting VLC libraries...")
+				zip_data = io.BytesIO(response.content)
+				with zipfile.ZipFile(zip_data, 'r') as zip_ref:
+					zip_ref.extractall(os.path.dirname(vlc_path))
+
+				speak.speak("VLC libraries downloaded and installed successfully")
+
+			except Exception as e:
+				speak.speak(f"VLC download failed: {e}")
+				wx.CallAfter(wx.MessageBox, f"Error downloading VLC: {e}", "VLC Download", wx.OK | wx.ICON_ERROR)
+
+		# Run in background thread
+		threading.Thread(target=do_download, daemon=True).start()
 
 class confirmation(wx.Panel, wx.Dialog):
 	def __init__(self, parent):
@@ -398,6 +594,7 @@ class OptionsGui(wx.Dialog):
 		if get_app().prefs.fetch_pages>10:
 			get_app().prefs.fetch_pages=10
 		get_app().prefs.single_api_on_startup=self.advanced.single_api_on_startup.GetValue()
+		get_app().prefs.ytdlp_path=self.advanced.ytdlp_path.GetValue()
 		# Confirmation settings
 		get_app().prefs.confirm_boost=self.confirmation.confirm_boost.GetValue()
 		get_app().prefs.confirm_unboost=self.confirmation.confirm_unboost.GetValue()

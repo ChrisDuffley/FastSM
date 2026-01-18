@@ -5,6 +5,7 @@ FastSM Changelog
 Add account creation to the app, both for Bluesky and Mastodon!
 Add media playback with VLC, if found. Use sound_lib as fallback
 The notifications and mentions timelines now save their position on exit and restore it if the post still exists in the timeline the next time you launch the app. This unlike the home timeline sync is local only and doesn't sync with any kind of API.
+Fix an issue with line breaks in the notifications buffer.
 More extensive support for server filters. Show warnings for those types of posts, don't let editing filters duplicate keywords.
 Redesigns poll creation dialog to be more in line with Mastodon poll creation.
 Show time remaining in a poll if you view results.

@@ -61,3 +61,6 @@ userdata/
 
 # Bundled VLC libraries (copied during build/dev setup)
 vlc/
+
+# yt-dlp executable (download from https://github.com/yt-dlp/yt-dlp/releases)
+yt-dlp.exe

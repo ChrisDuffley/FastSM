@@ -173,6 +173,9 @@ class Application:
 		self.prefs.gemini_model = self.prefs.get("gemini_model", "gemini-2.0-flash")
 		self.prefs.ai_image_prompt = self.prefs.get("ai_image_prompt", "Describe this image in detail for someone who cannot see it. Include information about the subjects, setting, colors, and any text visible in the image.")
 
+		# yt-dlp path for YouTube/etc URL extraction (empty = use bundled or system)
+		self.prefs.ytdlp_path = self.prefs.get("ytdlp_path", "")
+
 		if self.prefs.invisible:
 			main.window.register_keys()
 
@@ -180,6 +183,13 @@ class Application:
 		self.users = []
 
 		self.load_timeline_settings()
+
+		# Check for and handle any partially configured accounts
+		self._handle_unfinished_accounts()
+
+		# If all accounts were removed, ensure at least one will be created
+		if self.prefs.accounts <= 0:
+			self.prefs.accounts = 1
 
 		# Load accounts - first one on main thread, rest in parallel if already configured
 		if self.prefs.accounts > 0:
@@ -245,6 +255,100 @@ class Application:
 				return bool(prefs.get("instance_url", "")) and bool(prefs.get("access_token", ""))
 		except:
 			return False
+
+	def _is_account_partially_configured(self, index):
+		"""Check if an account has been started but not completed.
+		Returns (is_partial, platform_type, details) tuple."""
+		import config
+		try:
+			if config.is_portable_mode():
+				prefs = config.Config(name="account"+str(index), autosave=False, save_on_exit=False)
+			else:
+				prefs = config.Config(name="FastSM/account"+str(index), autosave=False, save_on_exit=False)
+
+			platform_type = prefs.get("platform_type", "")
+			if not platform_type:
+				return (False, None, None)
+
+			if platform_type == "bluesky":
+				handle = prefs.get("bluesky_handle", "")
+				password = prefs.get("bluesky_password", "")
+				if handle and password:
+					return (False, None, None)  # Fully configured
+				if handle or password:
+					return (True, "bluesky", handle or "incomplete")
+				# Just platform_type set, nothing else
+				return (True, "bluesky", "setup not started")
+			else:
+				# Mastodon
+				instance_url = prefs.get("instance_url", "")
+				access_token = prefs.get("access_token", "")
+				if instance_url and access_token:
+					return (False, None, None)  # Fully configured
+				if instance_url:
+					return (True, "mastodon", instance_url)
+				# Just platform_type set, nothing else
+				return (True, "mastodon", "setup not started")
+		except:
+			return (False, None, None)
+
+	def _handle_unfinished_accounts(self):
+		"""Check for and handle any partially configured accounts on startup."""
+		import wx
+		import config
+		import shutil
+		import os
+
+		unfinished = []
+		for i in range(self.prefs.accounts):
+			is_partial, platform_type, details = self._is_account_partially_configured(i)
+			if is_partial:
+				unfinished.append((i, platform_type, details))
+
+		if not unfinished:
+			return
+
+		# Build message for user
+		accounts_to_remove = []
+		for index, platform_type, details in unfinished:
+			msg = f"Account {index + 1} ({platform_type}) has incomplete setup"
+			if details and details != "setup not started":
+				msg += f": {details}"
+
+			result = wx.MessageBox(
+				f"{msg}\n\nWould you like to continue setup for this account?\n\n"
+				"Yes = Continue setup\n"
+				"No = Remove this account",
+				"Incomplete Account Found",
+				wx.YES_NO | wx.ICON_QUESTION
+			)
+
+			if result == wx.NO:
+				accounts_to_remove.append(index)
+
+		# Remove accounts (in reverse order to maintain indices)
+		if accounts_to_remove:
+			for index in sorted(accounts_to_remove, reverse=True):
+				try:
+					# Delete config folder
+					if config.is_portable_mode():
+						config_path = os.path.join(self.confpath, f"account{index}")
+					else:
+						config_path = os.path.join(self.confpath, f"account{index}")
+
+					if os.path.exists(config_path):
+						shutil.rmtree(config_path)
+
+					# Shift remaining account folders down
+					for j in range(index + 1, self.prefs.accounts):
+						old_path = os.path.join(self.confpath, f"account{j}")
+						new_path = os.path.join(self.confpath, f"account{j-1}")
+						if os.path.exists(old_path):
+							shutil.move(old_path, new_path)
+
+					self.prefs.accounts -= 1
+				except Exception as e:
+					print(f"Error removing account {index}: {e}")
 
 	def _add_session_threaded(self, index):
 		"""Add account session from a background thread."""
