@@ -201,7 +201,7 @@ class MastodonInstanceDialog(wx.Dialog):
 			speak.speak("Error")
 
 	def on_continue(self, event):
-		if self.registrations_open and self.instance_url:
+		if self.instance_url and (self.registrations_open or self.invite_code):
 			self.EndModal(wx.ID_OK)
 
 
