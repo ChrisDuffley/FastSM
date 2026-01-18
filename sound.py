@@ -76,12 +76,26 @@ media_matchlist = [
 	{"match": r"https?://t.co/.+", "func":return_url},
 ]
 
+# URLs that require VLC (not supported by sound_lib)
+vlc_only_matchlist = [
+	{"match": r"https?://(www\.)?(youtube\.com|youtu\.be)/.+", "func":return_url},
+]
+
 def get_media_urls(urls):
 	result = []
 	for u in urls:
+		# Check standard media URLs (work with both VLC and sound_lib)
 		for service in media_matchlist:
 			if re.match(service['match'], u.lower()) != None:
 				result.append({"url":u, "func":service['func']})
+				break
+		else:
+			# Check VLC-only URLs if VLC is available
+			if VLC_AVAILABLE:
+				for service in vlc_only_matchlist:
+					if re.match(service['match'], u.lower()) != None:
+						result.append({"url":u, "func":service['func'], "vlc_only": True})
+						break
 	return result
 
 def has_audio_attachment(status):
@@ -202,7 +216,7 @@ def play(account, filename, pack="", wait=False):
 	except sound_lib.main.BassError:
 		pass
 
-def play_url(url):
+def play_url(url, vlc_only=False):
 	global player, player_type, vlc_instance
 	from application import get_app
 
@@ -233,8 +247,15 @@ def play_url(url):
 					pass
 			return
 		except Exception:
-			# VLC failed, fall through to sound_lib
-			pass
+			# VLC failed, fall through to sound_lib (unless vlc_only)
+			if vlc_only:
+				speak.speak("VLC is required to play this URL but failed to start.")
+				return
+
+	# If this URL requires VLC and VLC isn't available, inform user
+	if vlc_only and not VLC_AVAILABLE:
+		speak.speak("This URL requires VLC media player which is not available.")
+		return
 
 	# Fall back to sound_lib
 	try:

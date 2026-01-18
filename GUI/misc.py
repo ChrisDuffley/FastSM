@@ -662,10 +662,29 @@ def load_conversation(account, status):
 def play_external(status):
 	"""Play audio from a post - checks attachments first, then URLs in text."""
 	# If already playing, stop
-	if sound.player is not None and sound.player.is_playing:
-		speak.speak("Stopped")
-		sound.stop()
-		return
+	if sound.player is not None:
+		try:
+			is_playing = False
+			if sound.player_type == 'vlc':
+				# VLC: check state - is_playing() returns 1 if playing
+				# Also check state isn't Ended/Error/Stopped
+				import vlc
+				state = sound.player.get_state()
+				is_playing = state == vlc.State.Playing
+			else:
+				# sound_lib uses is_playing property
+				is_playing = sound.player.is_playing
+
+			if is_playing:
+				speak.speak("Stopped")
+				sound.stop()
+				return
+			else:
+				# Player exists but not playing - clean it up
+				sound.stop()
+		except:
+			# Error checking state - clean up player
+			sound.stop()
 
 	# For boosts, get the actual boosted post
 	if hasattr(status, 'reblog') and status.reblog:
@@ -684,15 +703,17 @@ def play_external(status):
 
 	# If no audio attachment, check all URLs in status for media (including audio)
 	# Use get_media_urls to match the same URLs that earcon detection uses
+	vlc_only = False
 	if not audio_url:
 		urls = get_app().find_urls_in_status(status)
 		media_urls = sound.get_media_urls(urls)
 		if media_urls:
 			audio_url = media_urls[0]['url']
+			vlc_only = media_urls[0].get('vlc_only', False)
 
 	if audio_url:
 		speak.speak("Playing audio...")
-		sound.play_url(audio_url)
+		sound.play_url(audio_url, vlc_only=vlc_only)
 	else:
 		speak.speak("No audio.")
 
