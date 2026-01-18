@@ -100,6 +100,7 @@ class mastodon(object):
 		# Mastodon-specific config
 		self.prefs.instance_url = self.prefs.get("instance_url", "")
 		self.prefs.access_token = self.prefs.get("access_token", "")
+		is_new_signin = self.prefs.access_token == ""  # Track if this is a new sign-in
 		self.prefs.client_id = self.prefs.get("client_id", "")
 		self.prefs.client_secret = self.prefs.get("client_secret", "")
 
@@ -189,6 +190,10 @@ class mastodon(object):
 			# Clear tokens and try again
 			self.prefs.access_token = ""
 			_exit_app()
+
+		# Prompt to follow FastSM account on new sign-in
+		if is_new_signin:
+			self._prompt_follow_fastsm()
 
 		# Get instance info for character limit (use cached if available)
 		cached_max_chars = self.prefs.get("cached_max_chars", 0)
@@ -316,6 +321,25 @@ class mastodon(object):
 		# Streaming will be started by _check_initial_loads_complete()
 
 		self._finish_timeline_init()
+
+	def _prompt_follow_fastsm(self):
+		"""Prompt user to follow FastSM account after new Mastodon sign-in."""
+		result = wx.MessageBox(
+			"Would you like to follow FastSM@fwoof.space to get updates about the app?",
+			"Follow FastSM",
+			wx.YES_NO | wx.ICON_QUESTION
+		)
+		if result == wx.YES:
+			try:
+				# Look up the FastSM account via search
+				results = self.api.account_search(q="FastSM@fwoof.space", limit=1)
+				if results and len(results) > 0:
+					self.api.account_follow(id=results[0].id)
+					speak.speak("Now following FastSM")
+				else:
+					speak.speak("Could not find FastSM account")
+			except Exception as e:
+				speak.speak(f"Could not follow: {e}")
 
 	def _init_bluesky(self, index):
 		"""Initialize Bluesky account."""
