@@ -17,6 +17,8 @@ class MainGui(wx.Frame):
 	def __init__(self, title):
 		self.invisible=False
 		self._find_text = ""  # Current search text for find in timeline
+		self._refresh_pending = False  # Debounce flag for refresh
+		self._refresh_timer = None  # Timer for debounced refresh
 		wx.Frame.__init__(self, None, title=title,size=(800,600))
 		self.Center()
 		if platform.system()!="Darwin":
@@ -607,6 +609,12 @@ class MainGui(wx.Frame):
 	def OnDelete(self,event=None):
 		status = self.get_current_status()
 		if status:
+			if get_app().prefs.confirm_delete:
+				dlg = wx.MessageDialog(self, "Are you sure you want to delete this post?", "Confirm Delete", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+				if dlg.ShowModal() != wx.ID_YES:
+					dlg.Destroy()
+					return
+				dlg.Destroy()
 			misc.delete(get_app().currentAccount, status)
 
 	def OnHide(self,event=None):
@@ -798,6 +806,21 @@ class MainGui(wx.Frame):
 		except:
 			self.list2.SetSelection(get_app().currentAccount.currentTimeline.index-1)
 		self.list2.Thaw()
+		self._refresh_pending = False
+
+	def scheduleRefresh(self, delay_ms=100):
+		"""Schedule a debounced refresh. Multiple calls within delay_ms will be batched."""
+		if self._refresh_pending:
+			return  # Already scheduled, skip
+		self._refresh_pending = True
+		if self._refresh_timer:
+			self._refresh_timer.Stop()
+		self._refresh_timer = wx.CallLater(delay_ms, self._doScheduledRefresh)
+
+	def _doScheduledRefresh(self):
+		"""Execute the scheduled refresh if still needed."""
+		if self._refresh_pending:
+			self.refreshList()
 
 	def OnViewUserDb(self, event=None):
 		u=view.UserViewGui(get_app().currentAccount,get_app().users,"User Database containing "+str(len(get_app().users))+" users.")
@@ -1073,7 +1096,7 @@ class MainGui(wx.Frame):
 				m_url = menu.Append(-1, "Open URL in post")
 				self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
 
-				m_post_url = menu.Append(-1, "Open post URL")
+				m_post_url = menu.Append(-1, "View post on the web")
 				self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
 
 				menu.AppendSeparator()
@@ -1200,7 +1223,7 @@ class MainGui(wx.Frame):
 			m_url = menu.Append(-1, "Open URL in post")
 			self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
 
-			m_post_url = menu.Append(-1, "Open post URL")
+			m_post_url = menu.Append(-1, "View post on the web")
 			self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
 
 			menu.AppendSeparator()
@@ -1738,6 +1761,12 @@ class MainGui(wx.Frame):
 				status_id = misc.get_interaction_id(account, status)
 				status_to_check = status.reblog if hasattr(status, 'reblog') and status.reblog else status
 				if getattr(status_to_check, 'bookmarked', False):
+					if get_app().prefs.confirm_unbookmark:
+						dlg = wx.MessageDialog(self, "Are you sure you want to remove this bookmark?", "Confirm Unbookmark", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+						if dlg.ShowModal() != wx.ID_YES:
+							dlg.Destroy()
+							return
+						dlg.Destroy()
 					account.api.status_unbookmark(status_id)
 					status_to_check.bookmarked = False
 					sound.play(account, "unlike")
@@ -1753,6 +1782,12 @@ class MainGui(wx.Frame):
 								tl.index = len(tl.statuses) - 1
 							self.on_list_change(None)
 				else:
+					if get_app().prefs.confirm_bookmark:
+						dlg = wx.MessageDialog(self, "Are you sure you want to bookmark this post?", "Confirm Bookmark", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+						if dlg.ShowModal() != wx.ID_YES:
+							dlg.Destroy()
+							return
+						dlg.Destroy()
 					account.api.status_bookmark(status_id)
 					status_to_check.bookmarked = True
 					sound.play(account, "like")

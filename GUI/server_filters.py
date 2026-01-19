@@ -191,7 +191,8 @@ class EditFilterDialog(wx.Dialog):
         # Keywords
         keywords_label = wx.StaticText(panel, -1, "&Keywords (one per line):")
         main_box.Add(keywords_label, 0, wx.ALL, 5)
-        self.keywords_text = wx.TextCtrl(panel, -1, style=wx.TE_MULTILINE, size=(400, 100))
+        keywords_style = wx.TE_MULTILINE if get_app().prefs.word_wrap else wx.TE_MULTILINE | wx.TE_DONTWRAP
+        self.keywords_text = wx.TextCtrl(panel, -1, style=keywords_style, size=(400, 100))
         main_box.Add(self.keywords_text, 0, wx.ALL | wx.EXPAND, 5)
 
         # Whole word checkbox

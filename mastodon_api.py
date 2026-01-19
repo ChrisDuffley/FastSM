@@ -188,9 +188,9 @@ class mastodon(object):
 		try:
 			self.me = self.api.account_verify_credentials()
 		except MastodonError as e:
-			speak.speak("Error verifying credentials: " + str(e))
-			# Clear tokens and try again
-			self.prefs.access_token = ""
+			# Don't clear credentials on transient failures (server offline, network issues)
+			# Only exit - credentials will be preserved for next startup
+			speak.speak("Error connecting to server: " + str(e))
 			_exit_app()
 
 		# Prompt to follow FastSM account on new sign-in

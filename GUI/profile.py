@@ -23,7 +23,8 @@ class ProfileGui(wx.Dialog):
 
 		self.description_label = wx.StaticText(self.panel, -1, "Bio")
 		self.main_box.Add(self.description_label, 0, wx.LEFT | wx.TOP, 10)
-		self.description = wx.TextCtrl(self.panel, -1, "", style=wx.TE_MULTILINE)
+		description_style = wx.TE_MULTILINE if get_app().prefs.word_wrap else wx.TE_MULTILINE | wx.TE_DONTWRAP
+		self.description = wx.TextCtrl(self.panel, -1, "", style=description_style)
 		self.main_box.Add(self.description, 0, wx.EXPAND | wx.ALL, 10)
 		note = getattr(s, 'note', '')
 		if note:
@@ -33,7 +34,8 @@ class ProfileGui(wx.Dialog):
 		# Mastodon profile fields (up to 4 key-value pairs)
 		self.fields_label = wx.StaticText(self.panel, -1, "Profile Fields (Name: Value, one per line)")
 		self.main_box.Add(self.fields_label, 0, wx.LEFT | wx.TOP, 10)
-		self.fields = wx.TextCtrl(self.panel, -1, "", style=wx.TE_MULTILINE)
+		fields_style = wx.TE_MULTILINE if get_app().prefs.word_wrap else wx.TE_MULTILINE | wx.TE_DONTWRAP
+		self.fields = wx.TextCtrl(self.panel, -1, "", style=fields_style)
 		self.main_box.Add(self.fields, 0, wx.EXPAND | wx.ALL, 10)
 		fields = getattr(s, 'fields', [])
 		if fields:

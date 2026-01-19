@@ -462,6 +462,18 @@ class confirmation(wx.Panel, wx.Dialog):
 		self.confirm_unmute=wx.CheckBox(self, -1, "Unmuting")
 		self.main_box.Add(self.confirm_unmute, 0, wx.ALL, 10)
 		self.confirm_unmute.SetValue(get_app().prefs.confirm_unmute)
+
+		self.confirm_delete=wx.CheckBox(self, -1, "Deleting posts")
+		self.main_box.Add(self.confirm_delete, 0, wx.ALL, 10)
+		self.confirm_delete.SetValue(get_app().prefs.confirm_delete)
+
+		self.confirm_bookmark=wx.CheckBox(self, -1, "Bookmarking")
+		self.main_box.Add(self.confirm_bookmark, 0, wx.ALL, 10)
+		self.confirm_bookmark.SetValue(get_app().prefs.confirm_bookmark)
+
+		self.confirm_unbookmark=wx.CheckBox(self, -1, "Unbookmarking")
+		self.main_box.Add(self.confirm_unbookmark, 0, wx.ALL, 10)
+		self.confirm_unbookmark.SetValue(get_app().prefs.confirm_unbookmark)
 		self.SetSizer(self.main_box)
 
 
@@ -523,7 +535,8 @@ class ai(wx.Panel, wx.Dialog):
 		# Custom prompt
 		prompt_label = wx.StaticText(self, -1, "Image description prompt:")
 		self.main_box.Add(prompt_label, 0, wx.LEFT | wx.TOP, 10)
-		self.ai_image_prompt = wx.TextCtrl(self, -1, "", style=wx.TE_MULTILINE, size=(-1, 80), name="Image description prompt")
+		ai_prompt_style = wx.TE_MULTILINE if get_app().prefs.word_wrap else wx.TE_MULTILINE | wx.TE_DONTWRAP
+		self.ai_image_prompt = wx.TextCtrl(self, -1, "", style=ai_prompt_style, size=(-1, 80), name="Image description prompt")
 		self.ai_image_prompt.SetValue(get_app().prefs.ai_image_prompt)
 		self.main_box.Add(self.ai_image_prompt, 0, wx.EXPAND | wx.ALL, 10)
 
@@ -627,6 +640,9 @@ class OptionsGui(wx.Dialog):
 		get_app().prefs.confirm_unblock=self.confirmation.confirm_unblock.GetValue()
 		get_app().prefs.confirm_mute=self.confirmation.confirm_mute.GetValue()
 		get_app().prefs.confirm_unmute=self.confirmation.confirm_unmute.GetValue()
+		get_app().prefs.confirm_delete=self.confirmation.confirm_delete.GetValue()
+		get_app().prefs.confirm_bookmark=self.confirmation.confirm_bookmark.GetValue()
+		get_app().prefs.confirm_unbookmark=self.confirmation.confirm_unbookmark.GetValue()
 		# AI settings
 		ai_service_values = ['none', 'openai', 'gemini']
 		get_app().prefs.ai_service = ai_service_values[self.ai_tab.ai_service.GetSelection()]

@@ -102,7 +102,7 @@ class MastodonStreamListener(StreamListener):
 							needs_refresh = True
 						break
 			if needs_refresh:
-				wx.CallAfter(main.window.refreshList)
+				wx.CallAfter(main.window.scheduleRefresh)
 		except Exception as e:
 			self.account.app.handle_error(e, "Stream delete")
 
@@ -123,7 +123,7 @@ class MastodonStreamListener(StreamListener):
 							needs_refresh = True
 						break
 			if needs_refresh:
-				wx.CallAfter(main.window.refreshList)
+				wx.CallAfter(main.window.scheduleRefresh)
 		except Exception as e:
 			self.account.app.handle_error(e, "Stream status update")
 

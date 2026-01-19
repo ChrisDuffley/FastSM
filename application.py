@@ -165,6 +165,9 @@ class Application:
 		self.prefs.confirm_unblock = self.prefs.get("confirm_unblock", False)
 		self.prefs.confirm_mute = self.prefs.get("confirm_mute", False)
 		self.prefs.confirm_unmute = self.prefs.get("confirm_unmute", False)
+		self.prefs.confirm_delete = self.prefs.get("confirm_delete", False)
+		self.prefs.confirm_bookmark = self.prefs.get("confirm_bookmark", False)
+		self.prefs.confirm_unbookmark = self.prefs.get("confirm_unbookmark", False)
 		# AI image description settings
 		self.prefs.ai_service = self.prefs.get("ai_service", "none")  # 'none', 'openai', or 'gemini'
 		self.prefs.openai_api_key = self.prefs.get("openai_api_key", "")
@@ -872,10 +875,10 @@ class Application:
 		return returnstring
 
 	def isDuplicate(self, status, statuses):
-		for i in statuses:
-			if i.id == status.id:
-				return True
-		return False
+		# Use set comprehension for O(n) build + O(1) lookup, faster than O(n) linear search for each check
+		# When checking multiple items against the same list, this is significantly faster
+		status_ids = {str(s.id) for s in statuses if hasattr(s, 'id')}
+		return str(status.id) in status_ids
 
 	def _remove_user_by_id(self, user_id):
 		"""Remove a user from the cache by ID"""

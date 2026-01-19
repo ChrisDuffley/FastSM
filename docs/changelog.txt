@@ -1,6 +1,16 @@
 FastSM Changelog
 ================
 
+0.3.3
+Fix mute conversation in mentions timeline
+For sure fix auto updater.
+Fix word wrap in other edit fields where it didn't apply.
+Change open post URL option to view post on the web
+Attempts to reduce lag/CPU spikes when updating timelines.
+Use wx instance checking to prevent multiple instances of the app running.
+Add delete post, as well as bookmark and unbookmark, to the confirmations tab
+More resiliency when mastodon servers go offline.
+
 0.3.2
 Add timeline reordering for built-in timelines
 Fix autoupdater
