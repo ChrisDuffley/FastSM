@@ -82,7 +82,6 @@ class Application:
 		import mastodon_api as t
 		import timeline
 
-		threading.Thread(target=self.cfu).start()
 		self.prefs = config.Config(name="FastSM", autosave=True)
 		# In portable mode, userdata folder is already app-specific, don't add /FastSM
 		if config.is_portable_mode():
@@ -142,6 +141,7 @@ class Application:
 		self.prefs.use24HourTime = self.prefs.get("use24HourTime", False)
 		self.prefs.fetch_pages = self.prefs.get("fetch_pages", 1)  # Number of API calls to make when loading timelines
 		self.prefs.single_api_on_startup = self.prefs.get("single_api_on_startup", False)  # Use only one API call on initial timeline loads
+		self.prefs.check_for_updates = self.prefs.get("check_for_updates", True)  # Check for updates on startup
 		self.prefs.load_all_previous = self.prefs.get("load_all_previous", False)  # Keep loading previous until timeline is fully loaded
 		self.prefs.earcon_audio = self.prefs.get("earcon_audio", True)
 		self.prefs.earcon_top = self.prefs.get("earcon_top", False)
@@ -219,6 +219,10 @@ class Application:
 					self.add_session(i)
 
 		self._initialized = True
+
+		# Check for updates on startup if enabled
+		if self.prefs.check_for_updates:
+			threading.Thread(target=self.cfu, daemon=True).start()
 
 	def add_session(self, index=None):
 		"""Add a new account session."""
@@ -1129,19 +1133,47 @@ class Application:
 	def cfu(self, silent=True):
 		try:
 			latest = json.loads(requests.get("https://api.github.com/repos/masonasons/FastSM/releases/latest", {"accept": "application/vnd.github.v3+json"}).content.decode())
-			if version < latest['tag_name']:
-				ud = self.question("Update available: " + latest['tag_name'], "There is an update available. Your version: " + version + ". Latest version: " + latest['tag_name'] + ". Description: " + latest['body'] + "\r\nDo you want to open the direct download link?")
+			# Parse version from release body (format: **Version:** X.Y.Z)
+			import re
+			body = latest.get('body', '')
+			version_match = re.search(r'\*\*Version:\*\*\s*(\d+\.\d+\.\d+)', body)
+			if version_match:
+				latest_version = version_match.group(1)
+			else:
+				# Fallback to tag name if it looks like a version
+				tag = latest.get('tag_name', '')
+				if re.match(r'^\d+\.\d+\.\d+$', tag) or re.match(r'^v\d+\.\d+\.\d+$', tag):
+					latest_version = tag.lstrip('v')
+				else:
+					if not silent:
+						self.alert("Could not determine latest version from release.", "Update Check")
+					return
+
+			# Compare versions properly
+			def parse_version(v):
+				return tuple(int(x) for x in v.split('.'))
+
+			current_ver = parse_version(version)
+			latest_ver = parse_version(latest_version)
+
+			if latest_ver > current_ver:
+				ud = self.question("Update available: " + latest_version, "There is an update available.\n\nYour version: " + version + "\nLatest version: " + latest_version + "\n\nDo you want to download and install the update?")
 				if ud == 1:
-					for i in latest['assets']:
-						if "fastsm" in i['name'].lower() and "windows" in i['name'].lower() and platform.system() == "Windows" or "fastsm" in i['name'].lower() and platform.system() == "Darwin":
-							threading.Thread(target=self.download_update, args=[i['browser_download_url'],], daemon=True).start()
+					for asset in latest['assets']:
+						asset_name = asset['name'].lower()
+						if platform.system() == "Windows" and 'windows' in asset_name and asset_name.endswith('.zip'):
+							threading.Thread(target=self.download_update, args=[asset['browser_download_url'],], daemon=True).start()
+							return
+						elif platform.system() == "Darwin" and asset_name.endswith('.dmg'):
+							threading.Thread(target=self.download_update, args=[asset['browser_download_url'],], daemon=True).start()
 							return
 					self.alert("A download for this version could not be found for your platform. Check back soon.", "Error")
 			else:
 				if not silent:
-					self.alert("No updates available! The latest version of the program is " + latest['tag_name'], "No update available")
-		except:
-			pass
+					self.alert("No updates available!\n\nYou are running the latest version: " + version, "No Update Available")
+		except Exception as e:
+			if not silent:
+				self.alert(f"Error checking for updates: {e}", "Update Check Error")
 
 	def demojify(self, text):
 		"""Remove emoji from text while preserving accented characters."""
@@ -1223,18 +1255,85 @@ class Application:
 
 	def download_update(self, url):
 		import speak
-		try:
-			if platform.system() != "Darwin" and os.path.exists("FastSM.zip"):
-				os.remove("FastSM.zip")
-		except:
-			self.alert("The current version of FastSM.zip could not be removed.", "Error")
-			return
-		speak.speak("Downloading.")
-		filename = self.download_file(url)
+		import zipfile
+		import shutil
+
+		speak.speak("Downloading update...")
+
 		if platform.system() == "Windows":
-			os.system("updater.exe")
+			# Get app directory
+			if getattr(sys, 'frozen', False):
+				app_dir = os.path.dirname(sys.executable)
+			else:
+				app_dir = os.path.dirname(os.path.abspath(__file__))
+
+			zip_path = os.path.join(app_dir, "FastSM-update.zip")
+			extract_dir = os.path.join(app_dir, "FastSM-update")
+
+			try:
+				# Remove old update files if they exist
+				if os.path.exists(zip_path):
+					os.remove(zip_path)
+				if os.path.exists(extract_dir):
+					shutil.rmtree(extract_dir)
+
+				# Download the zip file
+				self.download_file_to(url, zip_path)
+				speak.speak("Download complete. Preparing update...")
+
+				# Create updater batch script
+				batch_path = os.path.join(app_dir, "updater.bat")
+				exe_name = "FastSM.exe" if getattr(sys, 'frozen', False) else "python.exe"
+
+				batch_content = f'''@echo off
+echo Waiting for FastSM to close...
+timeout /t 2 /nobreak >nul
+
+echo Extracting update...
+powershell -Command "Expand-Archive -Path '{zip_path}' -DestinationPath '{extract_dir}' -Force"
+
+echo Installing update...
+xcopy /s /y /q "{extract_dir}\\*" "{app_dir}\\"
+
+echo Cleaning up...
+rmdir /s /q "{extract_dir}"
+del "{zip_path}"
+
+echo Starting FastSM...
+start "" "{os.path.join(app_dir, exe_name)}"
+
+echo Update complete!
+del "%~f0"
+'''
+				with open(batch_path, 'w') as f:
+					f.write(batch_content)
+
+				speak.speak("Update ready. FastSM will now restart.")
+				# Run the updater and exit
+				os.startfile(batch_path)
+				wx.CallAfter(wx.Exit)
+
+			except Exception as e:
+				speak.speak(f"Update failed: {e}")
+				self.alert(f"Failed to download or apply update: {e}", "Update Error")
+
 		else:
-			self.alert("FastSM has been downloaded to your Downloads directory. Due to Apple restrictions, we cannot update FastSM for you on this platform. You must do this yourself.", "Alert")
+			# macOS - download to Downloads folder
+			try:
+				filename = self.download_file(url)
+				speak.speak("Download complete.")
+				self.alert(f"FastSM has been downloaded to:\n{filename}\n\nPlease open the DMG file and drag FastSM to your Applications folder to complete the update.", "Update Downloaded")
+			except Exception as e:
+				speak.speak(f"Download failed: {e}")
+				self.alert(f"Failed to download update: {e}", "Download Error")
+
+	def download_file_to(self, url, dest_path):
+		"""Download a file to a specific path."""
+		with requests.get(url, stream=True) as r:
+			r.raise_for_status()
+			with open(dest_path, 'wb') as f:
+				for chunk in r.iter_content(chunk_size=8192):
+					f.write(chunk)
 
 
 # Convenience function to get the app instance

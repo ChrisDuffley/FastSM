@@ -185,6 +185,9 @@ class advanced(wx.Panel, wx.Dialog):
 		self.sync_timeline_position=wx.CheckBox(self, -1, "Sync home timeline position with Mastodon (Mastodon only)")
 		self.main_box.Add(self.sync_timeline_position, 0, wx.ALL, 10)
 		self.sync_timeline_position.SetValue(get_app().prefs.sync_timeline_position)
+		self.check_for_updates=wx.CheckBox(self, -1, "Check for updates on startup")
+		self.main_box.Add(self.check_for_updates, 0, wx.ALL, 10)
+		self.check_for_updates.SetValue(get_app().prefs.check_for_updates)
 
 		# Dark mode setting
 		dark_mode_label = wx.StaticText(self, -1, "Dark mode:")
@@ -587,6 +590,7 @@ class OptionsGui(wx.Dialog):
 		get_app().prefs.streaming=self.advanced.streaming.GetValue()
 		get_app().prefs.load_all_previous=self.advanced.load_all_previous.GetValue()
 		get_app().prefs.sync_timeline_position=self.advanced.sync_timeline_position.GetValue()
+		get_app().prefs.check_for_updates=self.advanced.check_for_updates.GetValue()
 		# Dark mode setting
 		dark_mode_values = ['off', 'on', 'auto']
 		get_app().prefs.dark_mode = dark_mode_values[self.advanced.dark_mode.GetSelection()]

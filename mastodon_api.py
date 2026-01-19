@@ -866,6 +866,22 @@ class mastodon(object):
 			return self._platform.reject_follow_request(user_id)
 		self.api.follow_request_reject(id=user_id)
 
+	def mute_conversation(self, status_id):
+		"""Mute a conversation (stop notifications for replies)."""
+		# Use platform backend if available
+		if hasattr(self, '_platform') and self._platform:
+			return self._platform.mute_conversation(status_id)
+		self.api.status_mute(id=status_id)
+		return True
+
+	def unmute_conversation(self, status_id):
+		"""Unmute a conversation (resume notifications for replies)."""
+		# Use platform backend if available
+		if hasattr(self, '_platform') and self._platform:
+			return self._platform.unmute_conversation(status_id)
+		self.api.status_unmute(id=status_id)
+		return True
+
 	def UpdateProfile(self, display_name, note, fields=None):
 		"""Update profile information"""
 		kwargs = {}
