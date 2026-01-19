@@ -17,7 +17,6 @@ class MainGui(wx.Frame):
 	def __init__(self, title):
 		self.invisible=False
 		self._find_text = ""  # Current search text for find in timeline
-		self._refresh_pending = False  # Debounce flag for batching rapid UI updates
 		wx.Frame.__init__(self, None, title=title,size=(800,600))
 		self.Center()
 		if platform.system()!="Darwin":
@@ -608,12 +607,6 @@ class MainGui(wx.Frame):
 	def OnDelete(self,event=None):
 		status = self.get_current_status()
 		if status:
-			if get_app().prefs.confirm_delete:
-				dlg = wx.MessageDialog(self, "Are you sure you want to delete this post?", "Confirm Delete", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-				if dlg.ShowModal() != wx.ID_YES:
-					dlg.Destroy()
-					return
-				dlg.Destroy()
 			misc.delete(get_app().currentAccount, status)
 
 	def OnHide(self,event=None):
@@ -806,18 +799,6 @@ class MainGui(wx.Frame):
 			self.list2.SetSelection(get_app().currentAccount.currentTimeline.index-1)
 		self.list2.Thaw()
 
-	def scheduleRefresh(self, delay_ms=50):
-		"""Schedule a debounced refresh to batch rapid updates."""
-		if self._refresh_pending:
-			return
-		self._refresh_pending = True
-		wx.CallLater(delay_ms, self._doScheduledRefresh)
-
-	def _doScheduledRefresh(self):
-		"""Execute the scheduled refresh."""
-		self._refresh_pending = False
-		self.refreshList()
-
 	def OnViewUserDb(self, event=None):
 		u=view.UserViewGui(get_app().currentAccount,get_app().users,"User Database containing "+str(len(get_app().users))+" users.")
 		u.Show()
@@ -851,32 +832,16 @@ class MainGui(wx.Frame):
 	def onRefresh(self,event=None):
 		threading.Thread(target=get_app().currentAccount.currentTimeline.load, daemon=True).start()
 
-	def add_to_list(self, items, new_index=None):
-		"""Add items to the front of the list. Optionally set selection after."""
-		if not items:
-			return
+	def add_to_list(self,list):
 		self.list2.Freeze()
-		# Batch insert is more efficient than individual Insert calls
-		self.list2.InsertItems(items, 0)
-		if new_index is not None:
-			try:
-				self.list2.SetSelection(new_index)
-			except:
-				pass
+		for i in list:
+			self.list2.Insert(i,0)
 		self.list2.Thaw()
 
-	def append_to_list(self, items, new_index=None):
-		"""Add items to the end of the list. Optionally set selection after."""
-		if not items:
-			return
+	def append_to_list(self,list):
 		self.list2.Freeze()
-		# Batch insert at end
-		self.list2.InsertItems(items, self.list2.GetCount())
-		if new_index is not None:
-			try:
-				self.list2.SetSelection(new_index)
-			except:
-				pass
+		for i in list:
+			self.list2.Insert(i,self.list2.GetCount())
 		self.list2.Thaw()
 
 	def OnView(self,event=None):
@@ -1108,7 +1073,7 @@ class MainGui(wx.Frame):
 				m_url = menu.Append(-1, "Open URL in post")
 				self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
 
-				m_post_url = menu.Append(-1, "View post on the web")
+				m_post_url = menu.Append(-1, "Open post URL")
 				self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
 
 				menu.AppendSeparator()
@@ -1235,7 +1200,7 @@ class MainGui(wx.Frame):
 			m_url = menu.Append(-1, "Open URL in post")
 			self.Bind(wx.EVT_MENU, self.OnUrl, m_url)
 
-			m_post_url = menu.Append(-1, "View post on the web")
+			m_post_url = menu.Append(-1, "Open post URL")
 			self.Bind(wx.EVT_MENU, self.OnTweetUrl, m_post_url)
 
 			menu.AppendSeparator()
@@ -1773,12 +1738,6 @@ class MainGui(wx.Frame):
 				status_id = misc.get_interaction_id(account, status)
 				status_to_check = status.reblog if hasattr(status, 'reblog') and status.reblog else status
 				if getattr(status_to_check, 'bookmarked', False):
-					if get_app().prefs.confirm_unbookmark:
-						dlg = wx.MessageDialog(self, "Are you sure you want to remove this bookmark?", "Confirm Unbookmark", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-						if dlg.ShowModal() != wx.ID_YES:
-							dlg.Destroy()
-							return
-						dlg.Destroy()
 					account.api.status_unbookmark(status_id)
 					status_to_check.bookmarked = False
 					sound.play(account, "unlike")
@@ -1794,12 +1753,6 @@ class MainGui(wx.Frame):
 								tl.index = len(tl.statuses) - 1
 							self.on_list_change(None)
 				else:
-					if get_app().prefs.confirm_bookmark:
-						dlg = wx.MessageDialog(self, "Are you sure you want to bookmark this post?", "Confirm Bookmark", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-						if dlg.ShowModal() != wx.ID_YES:
-							dlg.Destroy()
-							return
-						dlg.Destroy()
 					account.api.status_bookmark(status_id)
 					status_to_check.bookmarked = True
 					sound.play(account, "like")

@@ -1116,6 +1116,8 @@ class Application:
 
 	def question(self, title, text, parent=None):
 		dlg = wx.MessageDialog(parent, text, title, wx.YES_NO | wx.ICON_QUESTION)
+		dlg.Raise()
+		dlg.RequestUserAttention()
 		result = dlg.ShowModal()
 		dlg.Destroy()
 		if result == wx.ID_YES:
@@ -1123,15 +1125,39 @@ class Application:
 		else:
 			return 2
 
+	def question_from_thread(self, title, text):
+		"""Show a question dialog from a background thread. Returns 1 for Yes, 2 for No."""
+		result = [None]
+		event = threading.Event()
+		def show_dialog():
+			result[0] = self.question(title, text)
+			event.set()
+		wx.CallAfter(show_dialog)
+		event.wait()
+		return result[0]
+
 	def warn(self, message, caption='Warning!', parent=None):
 		dlg = wx.MessageDialog(parent, message, caption, wx.OK | wx.ICON_WARNING)
+		dlg.Raise()
+		dlg.RequestUserAttention()
 		dlg.ShowModal()
 		dlg.Destroy()
 
 	def alert(self, message, caption="", parent=None):
 		dlg = wx.MessageDialog(parent, message, caption, wx.OK)
+		dlg.Raise()
+		dlg.RequestUserAttention()
 		dlg.ShowModal()
 		dlg.Destroy()
+
+	def alert_from_thread(self, message, caption=""):
+		"""Show an alert dialog from a background thread."""
+		event = threading.Event()
+		def show_dialog():
+			self.alert(message, caption)
+			event.set()
+		wx.CallAfter(show_dialog)
+		event.wait()
 
 	def _get_local_build_commit(self):
 		"""Get the commit SHA from the build_info.txt file."""
@@ -1224,7 +1250,8 @@ class Application:
 					message += f" (commit {release_commit[:8]})"
 				message += "\n\nDo you want to download and install the update?"
 
-				ud = self.question("Update available: " + latest_version, message)
+				# Use thread-safe dialog since cfu runs in background thread
+				ud = self.question_from_thread("Update available: " + latest_version, message)
 				if ud == 1:
 					for asset in latest['assets']:
 						asset_name = asset['name'].lower()
@@ -1234,16 +1261,16 @@ class Application:
 						elif platform.system() == "Darwin" and asset_name.endswith('.dmg'):
 							threading.Thread(target=self.download_update, args=[asset['browser_download_url'],], daemon=True).start()
 							return
-					self.alert("A download for this version could not be found for your platform. Check back soon.", "Error")
+					self.alert_from_thread("A download for this version could not be found for your platform. Check back soon.", "Error")
 			else:
 				if not silent:
 					message = f"You are running the latest version: {version}"
 					if local_commit:
 						message += f" (commit {local_commit[:8]})"
-					self.alert("No updates available!\n\n" + message, "No Update Available")
+					self.alert_from_thread("No updates available!\n\n" + message, "No Update Available")
 		except Exception as e:
 			if not silent:
-				self.alert(f"Error checking for updates: {e}", "Update Check Error")
+				self.alert_from_thread(f"Error checking for updates: {e}", "Update Check Error")
 
 	def demojify(self, text):
 		"""Remove emoji from text while preserving accented characters."""
@@ -1325,10 +1352,11 @@ class Application:
 
 	def download_update(self, url):
 		import speak
-		import zipfile
 		import shutil
 
-		speak.speak("Downloading update...")
+		# Use a temp directory for download to avoid I/O contention with app directory
+		import tempfile
+		temp_dir = tempfile.gettempdir()
 
 		if platform.system() == "Windows":
 			# Get app directory
@@ -1337,18 +1365,74 @@ class Application:
 			else:
 				app_dir = os.path.dirname(os.path.abspath(__file__))
 
-			zip_path = os.path.join(app_dir, "FastSM-update.zip")
+			# Download to temp, then move
+			zip_path = os.path.join(temp_dir, "FastSM-update.zip")
+			final_zip_path = os.path.join(app_dir, "FastSM-update.zip")
 			extract_dir = os.path.join(app_dir, "FastSM-update")
+
+			# Create and show progress dialog from main thread
+			progress_data = {'dialog': None, 'cancelled': False}
+
+			def create_progress_dialog():
+				progress_data['dialog'] = wx.ProgressDialog(
+					"Downloading Update",
+					"Downloading FastSM update...",
+					maximum=100,
+					style=wx.PD_APP_MODAL | wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME
+				)
+				progress_data['dialog'].Raise()
+
+			def update_progress(downloaded, total):
+				if progress_data['dialog'] and total > 0:
+					percent = int((downloaded / total) * 100)
+					mb_downloaded = downloaded / (1024 * 1024)
+					mb_total = total / (1024 * 1024)
+					def do_update():
+						if progress_data['dialog']:
+							cont, _ = progress_data['dialog'].Update(
+								percent,
+								f"Downloading: {mb_downloaded:.1f} MB / {mb_total:.1f} MB"
+							)
+							if not cont:
+								progress_data['cancelled'] = True
+					wx.CallAfter(do_update)
+
+			def close_progress_dialog():
+				if progress_data['dialog']:
+					progress_data['dialog'].Destroy()
+					progress_data['dialog'] = None
+
+			# Create dialog on main thread and wait
+			event = threading.Event()
+			def create_and_signal():
+				create_progress_dialog()
+				event.set()
+			wx.CallAfter(create_and_signal)
+			event.wait()
 
 			try:
 				# Remove old update files if they exist
 				if os.path.exists(zip_path):
 					os.remove(zip_path)
+				if os.path.exists(final_zip_path):
+					os.remove(final_zip_path)
 				if os.path.exists(extract_dir):
 					shutil.rmtree(extract_dir)
 
-				# Download the zip file
-				self.download_file_to(url, zip_path)
+				# Download the zip file to temp with progress
+				self.download_file_to(url, zip_path, progress_callback=update_progress)
+
+				if progress_data['cancelled']:
+					wx.CallAfter(close_progress_dialog)
+					speak.speak("Download cancelled.")
+					if os.path.exists(zip_path):
+						os.remove(zip_path)
+					return
+
+				wx.CallAfter(close_progress_dialog)
+
+				# Move from temp to app directory
+				shutil.move(zip_path, final_zip_path)
 				speak.speak("Download complete. Preparing update...")
 
 				# Create updater batch script
@@ -1360,7 +1444,7 @@ echo Waiting for FastSM to close...
 timeout /t 2 /nobreak >nul
 
 echo Extracting update...
-powershell -Command "Expand-Archive -Path '{zip_path}' -DestinationPath '{extract_dir}' -Force"
+powershell -Command "Expand-Archive -Path '{final_zip_path}' -DestinationPath '{extract_dir}' -Force"
 
 echo Installing update...
 rem The zip contains a FastSM folder inside, so copy from there
@@ -1368,7 +1452,7 @@ xcopy /s /y /q "{extract_dir}\\FastSM\\*" "{app_dir}\\"
 
 echo Cleaning up...
 rmdir /s /q "{extract_dir}"
-del "{zip_path}"
+del "{final_zip_path}"
 
 echo Starting FastSM...
 start "" "{os.path.join(app_dir, exe_name)}"
@@ -1385,26 +1469,91 @@ del "%~f0"
 				wx.CallAfter(wx.Exit)
 
 			except Exception as e:
+				wx.CallAfter(close_progress_dialog)
 				speak.speak(f"Update failed: {e}")
-				self.alert(f"Failed to download or apply update: {e}", "Update Error")
+				self.alert_from_thread(f"Failed to download or apply update: {e}", "Update Error")
 
 		else:
-			# macOS - download to Downloads folder
-			try:
-				filename = self.download_file(url)
-				speak.speak("Download complete.")
-				self.alert(f"FastSM has been downloaded to:\n{filename}\n\nPlease open the DMG file and drag FastSM to your Applications folder to complete the update.", "Update Downloaded")
-			except Exception as e:
-				speak.speak(f"Download failed: {e}")
-				self.alert(f"Failed to download update: {e}", "Download Error")
+			# macOS - download to Downloads folder with progress
+			progress_data = {'dialog': None, 'cancelled': False}
 
-	def download_file_to(self, url, dest_path):
-		"""Download a file to a specific path."""
-		with requests.get(url, stream=True) as r:
+			def create_progress_dialog():
+				progress_data['dialog'] = wx.ProgressDialog(
+					"Downloading Update",
+					"Downloading FastSM update...",
+					maximum=100,
+					style=wx.PD_APP_MODAL | wx.PD_AUTO_HIDE | wx.PD_CAN_ABORT | wx.PD_ELAPSED_TIME | wx.PD_REMAINING_TIME
+				)
+				progress_data['dialog'].Raise()
+
+			def update_progress(downloaded, total):
+				if progress_data['dialog'] and total > 0:
+					percent = int((downloaded / total) * 100)
+					mb_downloaded = downloaded / (1024 * 1024)
+					mb_total = total / (1024 * 1024)
+					def do_update():
+						if progress_data['dialog']:
+							cont, _ = progress_data['dialog'].Update(
+								percent,
+								f"Downloading: {mb_downloaded:.1f} MB / {mb_total:.1f} MB"
+							)
+							if not cont:
+								progress_data['cancelled'] = True
+					wx.CallAfter(do_update)
+
+			def close_progress_dialog():
+				if progress_data['dialog']:
+					progress_data['dialog'].Destroy()
+					progress_data['dialog'] = None
+
+			event = threading.Event()
+			def create_and_signal():
+				create_progress_dialog()
+				event.set()
+			wx.CallAfter(create_and_signal)
+			event.wait()
+
+			try:
+				local_filename = url.split('/')[-1]
+				local_filename = os.path.expanduser("~/Downloads/" + local_filename)
+				self.download_file_to(url, local_filename, progress_callback=update_progress)
+
+				if progress_data['cancelled']:
+					wx.CallAfter(close_progress_dialog)
+					speak.speak("Download cancelled.")
+					if os.path.exists(local_filename):
+						os.remove(local_filename)
+					return
+
+				wx.CallAfter(close_progress_dialog)
+				speak.speak("Download complete.")
+				self.alert_from_thread(f"FastSM has been downloaded to:\n{local_filename}\n\nPlease open the DMG file and drag FastSM to your Applications folder to complete the update.", "Update Downloaded")
+			except Exception as e:
+				wx.CallAfter(close_progress_dialog)
+				speak.speak(f"Download failed: {e}")
+				self.alert_from_thread(f"Failed to download update: {e}", "Download Error")
+
+	def download_file_to(self, url, dest_path, progress_callback=None):
+		"""Download a file to a specific path with optional progress callback.
+
+		Args:
+			url: URL to download from
+			dest_path: Local path to save file
+			progress_callback: Optional function(downloaded, total) called periodically
+		"""
+		with requests.get(url, stream=True, timeout=30) as r:
 			r.raise_for_status()
+			total_size = int(r.headers.get('content-length', 0))
+			downloaded = 0
+			# Use 1MB chunks to reduce I/O overhead and improve performance
+			chunk_size = 1024 * 1024
 			with open(dest_path, 'wb') as f:
-				for chunk in r.iter_content(chunk_size=8192):
-					f.write(chunk)
+				for chunk in r.iter_content(chunk_size=chunk_size):
+					if chunk:
+						f.write(chunk)
+						downloaded += len(chunk)
+						if progress_callback:
+							progress_callback(downloaded, total_size)
 
 
 # Convenience function to get the app instance

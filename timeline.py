@@ -699,36 +699,39 @@ class timeline(object):
 							filtered_objs2.append(i)
 					objs2 = filtered_objs2
 
+				if self.app.currentAccount == self.account and self.account.currentTimeline == self:
+					if not back and not self.initial:
+						if not self.app.prefs.reversed:
+							wx.CallAfter(main.window.add_to_list, self.prepare(objs2))
+						else:
+							objs2.reverse()
+							wx.CallAfter(main.window.append_to_list, self.prepare(objs2))
+					else:
+						if not self.app.prefs.reversed:
+							wx.CallAfter(main.window.append_to_list, self.prepare(objs2))
+						else:
+							wx.CallAfter(main.window.add_to_list, self.prepare(objs2))
+
 				if items == []:
 					if not self.app.prefs.reversed:
 						self.update_kwargs['since_id'] = tl[0].id
 					else:
 						self.update_kwargs['since_id'] = tl[len(tl)-1].id
 
-				# Calculate new index before UI update
-				new_selection = None
 				if not back and not self.initial:
 					if not self.app.prefs.reversed:
+						# Use filtered count (len(objs2)) for index adjustment, not total newitems
 						self.index += len(objs2)
-						new_selection = self.index
+						if self.app.currentAccount == self.account and self.account.currentTimeline == self and len(self.statuses) > 0:
+							try:
+								wx.CallAfter(main.window.list2.SetSelection, self.index)
+							except:
+								pass
 				if back and self.app.prefs.reversed:
+					# Use filtered count (len(objs2)) for index adjustment, not total newitems
 					self.index += len(objs2)
-					new_selection = self.index
-
-				# Combined UI update - single CallAfter instead of two separate calls
-				if self.app.currentAccount == self.account and self.account.currentTimeline == self:
-					prepared = self.prepare(objs2)
-					if not back and not self.initial:
-						if not self.app.prefs.reversed:
-							wx.CallAfter(main.window.add_to_list, prepared, new_selection)
-						else:
-							objs2.reverse()
-							wx.CallAfter(main.window.append_to_list, self.prepare(objs2), new_selection)
-					else:
-						if not self.app.prefs.reversed:
-							wx.CallAfter(main.window.append_to_list, prepared, new_selection)
-						else:
-							wx.CallAfter(main.window.add_to_list, prepared, new_selection)
+					if self.app.currentAccount == self.account and self.account.currentTimeline == self and len(self.statuses) > 0:
+						wx.CallAfter(main.window.list2.SetSelection, self.index)
 
 				if self.initial:
 					if not self.app.prefs.reversed:
@@ -974,36 +977,25 @@ def add(account, name, type, data=None, user=None):
 		main.window.refreshTimelines()
 
 
-def _load_timeline_worker(timeline, account):
-	"""Worker function to load a single timeline (for parallel execution)."""
-	try:
-		if timeline.type == "list":
-			try:
-				members = account.api.list_accounts(id=timeline.data)
-				timeline.members = []
-				for m in members:
-					timeline.members.append(m.id)
-			except:
-				pass
-		if timeline.type != "conversation":
-			timeline.load()
-	except MastodonError as error:
-		sound.play(account, "error")
-		speak.speak(str(error))
-	except Exception:
-		pass  # Silently ignore other errors in background updates
-
 def timelineThread(account):
 	app = account.app
 	while 1:
 		time.sleep(app.prefs.update_time * 60)
-		# Load all timelines in parallel for better performance
-		from concurrent.futures import ThreadPoolExecutor, as_completed
-		timelines_to_load = list(account.timelines)  # Copy to avoid modification during iteration
-		with ThreadPoolExecutor(max_workers=len(timelines_to_load) or 1) as executor:
-			futures = {executor.submit(_load_timeline_worker, tl, account): tl for tl in timelines_to_load}
-			for future in as_completed(futures):
-				pass  # Just wait for completion, errors handled in worker
+		for i in account.timelines:
+			try:
+				if i.type == "list":
+					try:
+						members = account.api.list_accounts(id=i.data)
+						i.members = []
+						for i2 in members:
+							i.members.append(i2.id)
+					except:
+						pass
+				if i.type != "conversation":
+					i.load()
+			except MastodonError as error:
+				sound.play(account, "error")
+				speak.speak(str(error))
 		if app.prefs.streaming and (account.stream is not None and not account.stream_thread.is_alive() or account.stream is None):
 			account.start_stream()
 
