@@ -17,8 +17,7 @@ class MainGui(wx.Frame):
 	def __init__(self, title):
 		self.invisible=False
 		self._find_text = ""  # Current search text for find in timeline
-		self._refresh_pending = False  # Debounce flag for refresh
-		self._refresh_timer = None  # Timer for debounced refresh
+		self._refresh_pending = False  # Debounce flag for batching rapid UI updates
 		wx.Frame.__init__(self, None, title=title,size=(800,600))
 		self.Center()
 		if platform.system()!="Darwin":
@@ -806,21 +805,18 @@ class MainGui(wx.Frame):
 		except:
 			self.list2.SetSelection(get_app().currentAccount.currentTimeline.index-1)
 		self.list2.Thaw()
-		self._refresh_pending = False
 
-	def scheduleRefresh(self, delay_ms=100):
-		"""Schedule a debounced refresh. Multiple calls within delay_ms will be batched."""
+	def scheduleRefresh(self, delay_ms=50):
+		"""Schedule a debounced refresh to batch rapid updates."""
 		if self._refresh_pending:
-			return  # Already scheduled, skip
+			return
 		self._refresh_pending = True
-		if self._refresh_timer:
-			self._refresh_timer.Stop()
-		self._refresh_timer = wx.CallLater(delay_ms, self._doScheduledRefresh)
+		wx.CallLater(delay_ms, self._doScheduledRefresh)
 
 	def _doScheduledRefresh(self):
-		"""Execute the scheduled refresh if still needed."""
-		if self._refresh_pending:
-			self.refreshList()
+		"""Execute the scheduled refresh."""
+		self._refresh_pending = False
+		self.refreshList()
 
 	def OnViewUserDb(self, event=None):
 		u=view.UserViewGui(get_app().currentAccount,get_app().users,"User Database containing "+str(len(get_app().users))+" users.")
@@ -855,16 +851,32 @@ class MainGui(wx.Frame):
 	def onRefresh(self,event=None):
 		threading.Thread(target=get_app().currentAccount.currentTimeline.load, daemon=True).start()
 
-	def add_to_list(self,list):
+	def add_to_list(self, items, new_index=None):
+		"""Add items to the front of the list. Optionally set selection after."""
+		if not items:
+			return
 		self.list2.Freeze()
-		for i in list:
-			self.list2.Insert(i,0)
+		# Batch insert is more efficient than individual Insert calls
+		self.list2.InsertItems(items, 0)
+		if new_index is not None:
+			try:
+				self.list2.SetSelection(new_index)
+			except:
+				pass
 		self.list2.Thaw()
 
-	def append_to_list(self,list):
+	def append_to_list(self, items, new_index=None):
+		"""Add items to the end of the list. Optionally set selection after."""
+		if not items:
+			return
 		self.list2.Freeze()
-		for i in list:
-			self.list2.Insert(i,self.list2.GetCount())
+		# Batch insert at end
+		self.list2.InsertItems(items, self.list2.GetCount())
+		if new_index is not None:
+			try:
+				self.list2.SetSelection(new_index)
+			except:
+				pass
 		self.list2.Thaw()
 
 	def OnView(self,event=None):

@@ -645,9 +645,6 @@ class timeline(object):
 			newitems = 0
 			objs = []
 			objs2 = []
-			# Build duplicate ID set once before loop for O(1) lookup per item
-			all_statuses = self._unfiltered_statuses if hasattr(self, '_unfiltered_statuses') else self.statuses
-			existing_ids = {str(s.id) for s in all_statuses if hasattr(s, 'id')}
 			for i in tl:
 				# Handle notifications and conversations differently
 				# Use per-account user cache
@@ -661,10 +658,11 @@ class timeline(object):
 				else:
 					self.account.user_cache.add_users_from_status(i)
 
-				# Check for duplicates using pre-built set (O(1) lookup)
-				item_id = str(i.id)
-				if item_id not in existing_ids:
-					existing_ids.add(item_id)  # Prevent duplicates within this batch
+				# Check for duplicates in both visible and unfiltered statuses
+				all_statuses = self.statuses
+				if hasattr(self, '_unfiltered_statuses'):
+					all_statuses = self._unfiltered_statuses
+				if not self.app.isDuplicate(i, all_statuses):
 					newitems += 1
 					# Use filter-aware method to add status
 					to_front = self.app.prefs.reversed if (self.initial or back) else not self.app.prefs.reversed
@@ -701,39 +699,36 @@ class timeline(object):
 							filtered_objs2.append(i)
 					objs2 = filtered_objs2
 
-				if self.app.currentAccount == self.account and self.account.currentTimeline == self:
-					if not back and not self.initial:
-						if not self.app.prefs.reversed:
-							wx.CallAfter(main.window.add_to_list, self.prepare(objs2))
-						else:
-							objs2.reverse()
-							wx.CallAfter(main.window.append_to_list, self.prepare(objs2))
-					else:
-						if not self.app.prefs.reversed:
-							wx.CallAfter(main.window.append_to_list, self.prepare(objs2))
-						else:
-							wx.CallAfter(main.window.add_to_list, self.prepare(objs2))
-
 				if items == []:
 					if not self.app.prefs.reversed:
 						self.update_kwargs['since_id'] = tl[0].id
 					else:
 						self.update_kwargs['since_id'] = tl[len(tl)-1].id
 
+				# Calculate new index before UI update
+				new_selection = None
 				if not back and not self.initial:
 					if not self.app.prefs.reversed:
-						# Use filtered count (len(objs2)) for index adjustment, not total newitems
 						self.index += len(objs2)
-						if self.app.currentAccount == self.account and self.account.currentTimeline == self and len(self.statuses) > 0:
-							try:
-								wx.CallAfter(main.window.list2.SetSelection, self.index)
-							except:
-								pass
+						new_selection = self.index
 				if back and self.app.prefs.reversed:
-					# Use filtered count (len(objs2)) for index adjustment, not total newitems
 					self.index += len(objs2)
-					if self.app.currentAccount == self.account and self.account.currentTimeline == self and len(self.statuses) > 0:
-						wx.CallAfter(main.window.list2.SetSelection, self.index)
+					new_selection = self.index
+
+				# Combined UI update - single CallAfter instead of two separate calls
+				if self.app.currentAccount == self.account and self.account.currentTimeline == self:
+					prepared = self.prepare(objs2)
+					if not back and not self.initial:
+						if not self.app.prefs.reversed:
+							wx.CallAfter(main.window.add_to_list, prepared, new_selection)
+						else:
+							objs2.reverse()
+							wx.CallAfter(main.window.append_to_list, self.prepare(objs2), new_selection)
+					else:
+						if not self.app.prefs.reversed:
+							wx.CallAfter(main.window.append_to_list, prepared, new_selection)
+						else:
+							wx.CallAfter(main.window.add_to_list, prepared, new_selection)
 
 				if self.initial:
 					if not self.app.prefs.reversed:

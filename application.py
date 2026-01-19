@@ -875,10 +875,10 @@ class Application:
 		return returnstring
 
 	def isDuplicate(self, status, statuses):
-		# Use set comprehension for O(n) build + O(1) lookup, faster than O(n) linear search for each check
-		# When checking multiple items against the same list, this is significantly faster
-		status_ids = {str(s.id) for s in statuses if hasattr(s, 'id')}
-		return str(status.id) in status_ids
+		for i in statuses:
+			if i.id == status.id:
+				return True
+		return False
 
 	def _remove_user_by_id(self, user_id):
 		"""Remove a user from the cache by ID"""
