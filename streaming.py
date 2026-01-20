@@ -98,6 +98,7 @@ class MastodonStreamListener(StreamListener):
 				for i, status in enumerate(tl.statuses):
 					if hasattr(status, 'id') and str(status.id) == status_id_str:
 						tl.statuses.pop(i)
+						tl.invalidate_display_cache()
 						if tl == self.account.currentTimeline and self.account == self.account.app.currentAccount:
 							needs_refresh = True
 						break
@@ -119,6 +120,7 @@ class MastodonStreamListener(StreamListener):
 				for i, s in enumerate(tl.statuses):
 					if hasattr(s, 'id') and str(s.id) == str(uni_status.id):
 						tl.statuses[i] = uni_status
+						tl.invalidate_display_cache()
 						if tl == self.account.currentTimeline and self.account == self.account.app.currentAccount:
 							needs_refresh = True
 						break

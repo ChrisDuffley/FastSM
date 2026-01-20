@@ -290,6 +290,7 @@ class timeline(object):
 			self.statuses.insert(0, status)
 		else:
 			self.statuses.append(status)
+		self.invalidate_display_cache()
 		return True
 
 	def load_conversation(self):
@@ -317,12 +318,15 @@ class timeline(object):
 				self.statuses.append(actual_status)
 				for descendant in descendants:
 					self.statuses.append(descendant)
+				self.invalidate_display_cache()
 			except Exception:
 				# Fall back to recursive method
 				self.process_status(actual_status)
+				self.invalidate_display_cache()
 		else:
 			# Fall back to recursive method for Mastodon API
 			self.process_status(actual_status)
+			self.invalidate_display_cache()
 
 		# Conversation threads should always be in chronological order (oldest first)
 		# regardless of the global reversed setting, since they represent a chat-like thread
@@ -804,6 +808,12 @@ class timeline(object):
 		self.app.save_timeline_settings()
 
 	def get(self):
+		# Return cached display list if available and valid
+		if hasattr(self, '_display_list_cache') and self._display_list_cache is not None:
+			if len(self._display_list_cache) == len(self.statuses):
+				return self._display_list_cache
+
+		# Build display list (cache individual items for future use)
 		items = []
 		for i in self.statuses:
 			# Use cached display string if available
@@ -824,7 +834,14 @@ class timeline(object):
 				except (AttributeError, TypeError):
 					pass
 				items.append(display)
+
+		# Cache the full display list
+		self._display_list_cache = items
 		return items
+
+	def invalidate_display_cache(self):
+		"""Invalidate the cached display list (call when statuses change)."""
+		self._display_list_cache = None
 
 	def prepare(self, items):
 		items2 = []
