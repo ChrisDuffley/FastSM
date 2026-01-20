@@ -268,8 +268,9 @@ def _get_bundled_path():
 			# sys.executable is at Contents/MacOS/AppName
 			return os.path.join(os.path.dirname(sys.executable), '..', 'Resources')
 		else:
-			# Windows/Linux: use _MEIPASS or executable directory
-			return getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+			# Windows/Linux: sounds/keymaps are in the same directory as the executable
+			# (not in _MEIPASS/_internal, which is for Python modules)
+			return os.path.dirname(sys.executable)
 	return None
 
 def play(account, filename, pack="", wait=False):
