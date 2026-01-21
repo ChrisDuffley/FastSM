@@ -43,6 +43,8 @@ class timeline(object):
 		self._last_synced_id = None  # Last position synced with server
 		# Set of status IDs for O(1) duplicate checking
 		self._status_ids = set()
+		# Lock for thread-safe duplicate checking and status addition
+		self._status_lock = threading.RLock()
 		# Gap tracking for cache - when API refresh doesn't fully connect to cached items
 		# List of gaps, each gap is a dict with 'max_id' (where to load from)
 		self._gaps = []
@@ -286,33 +288,47 @@ class timeline(object):
 		"""
 		from GUI.timeline_filter import should_show_status
 
-		# Always track ID for duplicate checking, even if filtered
-		if hasattr(status, 'id'):
-			self._status_ids.add(str(status.id))
+		with self._status_lock:
+			# Always track ID for duplicate checking, even if filtered
+			if hasattr(status, 'id'):
+				self._status_ids.add(str(status.id))
 
-		# Always add to unfiltered list if it exists
-		if hasattr(self, '_unfiltered_statuses'):
+			# Always add to unfiltered list if it exists
+			if hasattr(self, '_unfiltered_statuses'):
+				if to_front:
+					self._unfiltered_statuses.insert(0, status)
+				else:
+					self._unfiltered_statuses.append(status)
+
+			# Check if we should show this status based on filter
+			if hasattr(self, '_filter_settings') and self._filter_settings:
+				if not should_show_status(status, self._filter_settings, self.app, account=self.account):
+					return False
+
+			# Add to visible statuses
 			if to_front:
-				self._unfiltered_statuses.insert(0, status)
+				self.statuses.insert(0, status)
 			else:
-				self._unfiltered_statuses.append(status)
-
-		# Check if we should show this status based on filter
-		if hasattr(self, '_filter_settings') and self._filter_settings:
-			if not should_show_status(status, self._filter_settings, self.app, account=self.account):
-				return False
-
-		# Add to visible statuses
-		if to_front:
-			self.statuses.insert(0, status)
-		else:
-			self.statuses.append(status)
-		self.invalidate_display_cache()
-		return True
+				self.statuses.append(status)
+			self.invalidate_display_cache()
+			return True
 
 	def has_status(self, status_id):
 		"""Check if a status ID is already in this timeline (O(1) lookup)."""
-		return str(status_id) in self._status_ids
+		with self._status_lock:
+			return str(status_id) in self._status_ids
+
+	def try_add_status_id(self, status_id):
+		"""Atomically check if status ID exists and add it if not.
+
+		Returns True if the ID was added (not a duplicate), False if already exists.
+		"""
+		with self._status_lock:
+			status_id_str = str(status_id)
+			if status_id_str in self._status_ids:
+				return False
+			self._status_ids.add(status_id_str)
+			return True
 
 	def has_gap(self):
 		"""Check if there's a gap in the timeline that needs to be filled."""
@@ -949,8 +965,9 @@ class timeline(object):
 				else:
 					self.account.user_cache.add_users_from_status(i)
 
-				# Check for duplicates using O(1) set lookup
-				if not self.has_status(i.id):
+				# Check for duplicates using atomic check-and-add to prevent race conditions
+				# between streaming and REST API refresh threads
+				if self.try_add_status_id(i.id):
 					newitems += 1
 					# For initial/back load: add directly to statuses
 					# For refresh: collect first, add after processing all items
