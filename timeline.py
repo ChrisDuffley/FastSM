@@ -47,6 +47,7 @@ class timeline(object):
 		# List of gaps, each gap is a dict with 'max_id' (where to load from)
 		self._gaps = []
 		self._gap_newest_cached_id = None  # Newest cached ID (for detecting new gaps after cache load)
+		self._skip_next_gap_detection = False  # Skip gap detection on first refresh after cache load
 
 		for i in self.app.timeline_settings:
 			if i.account_id == self.account.me.id and i.tl == self.name:
@@ -419,6 +420,9 @@ class timeline(object):
 				# Track newest cached ID for gap detection after API refresh (only for gap-enabled timelines)
 				if self._should_detect_gaps():
 					self._gap_newest_cached_id = metadata['since_id']
+					# Skip gap detection on the first refresh after cache load
+					# (getting a full page of new items after cache load is expected, not a gap)
+					self._skip_next_gap_detection = True
 
 			# Restore any saved gaps from cache (only for gap-enabled timelines)
 			if self._should_detect_gaps() and metadata.get('gaps'):
@@ -985,19 +989,24 @@ class timeline(object):
 					# Gap detection: if we got a full page on refresh, there might be a gap
 					# This works on any refresh (after cache load, after sleep/hibernate, etc.)
 					# Only for timeline types where gaps matter (home, notifications, mentions, etc.)
+					# Skip on first refresh after cache load (getting many new items is expected then)
 					if self._should_detect_gaps() and not back and not self.initial and self._gap_newest_cached_id:
-						fetch_limit = self.update_kwargs.get('limit', 40)
-						if len(tl) >= fetch_limit:
-							# Got a full page - likely a gap between oldest new item and existing items
-							if not self.app.prefs.reversed:
-								oldest_new_id = str(tl[-1].id)
-							else:
-								oldest_new_id = str(tl[0].id)
-							# Only add gap if the oldest new item doesn't connect to our existing newest
-							if oldest_new_id != self._gap_newest_cached_id:
-								# Add new gap to the front of the list (newest gap first)
-								self._gaps.insert(0, {'max_id': oldest_new_id})
-								speak.speak(f"Gap detected in {self.name}, {len(self._gaps)} gap{'s' if len(self._gaps) > 1 else ''} to fill")
+						if self._skip_next_gap_detection:
+							# First refresh after cache load - don't detect gaps, just clear the flag
+							self._skip_next_gap_detection = False
+						else:
+							fetch_limit = self.update_kwargs.get('limit', 40)
+							if len(tl) >= fetch_limit:
+								# Got a full page - likely a gap between oldest new item and existing items
+								if not self.app.prefs.reversed:
+									oldest_new_id = str(tl[-1].id)
+								else:
+									oldest_new_id = str(tl[0].id)
+								# Only add gap if the oldest new item doesn't connect to our existing newest
+								if oldest_new_id != self._gap_newest_cached_id:
+									# Add new gap to the front of the list (newest gap first)
+									self._gaps.insert(0, {'max_id': oldest_new_id})
+									speak.speak(f"Gap detected in {self.name}, {len(self._gaps)} gap{'s' if len(self._gaps) > 1 else ''} to fill")
 
 					# Update tracker to newest item for next refresh gap detection (only for gap-enabled timelines)
 					if self._should_detect_gaps():
