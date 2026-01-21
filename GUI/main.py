@@ -207,6 +207,40 @@ class MainGui(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.OnPrevTimeline, m_prev_timeline)
 		self.Bind(wx.EVT_MENU, self.OnNextAccount, m_next_account)
 		self.Bind(wx.EVT_MENU, self.OnPrevAccount, m_prev_account)
+		# Timeline jump shortcuts (Ctrl/Cmd + number)
+		menu5.AppendSeparator()
+		if platform.system() == "Darwin":
+			m_goto_tl1 = menu5.Append(-1, "Go to timeline 1 (Cmd+1)")
+			m_goto_tl2 = menu5.Append(-1, "Go to timeline 2 (Cmd+2)")
+			m_goto_tl3 = menu5.Append(-1, "Go to timeline 3 (Cmd+3)")
+			m_goto_tl4 = menu5.Append(-1, "Go to timeline 4 (Cmd+4)")
+			m_goto_tl5 = menu5.Append(-1, "Go to timeline 5 (Cmd+5)")
+			m_goto_tl6 = menu5.Append(-1, "Go to timeline 6 (Cmd+6)")
+			m_goto_tl7 = menu5.Append(-1, "Go to timeline 7 (Cmd+7)")
+			m_goto_tl8 = menu5.Append(-1, "Go to timeline 8 (Cmd+8)")
+			m_goto_tl9 = menu5.Append(-1, "Go to timeline 9 (Cmd+9)")
+			m_goto_tl0 = menu5.Append(-1, "Go to timeline 10 (Cmd+0)")
+		else:
+			m_goto_tl1 = menu5.Append(-1, "Go to timeline 1\tCtrl+1")
+			m_goto_tl2 = menu5.Append(-1, "Go to timeline 2\tCtrl+2")
+			m_goto_tl3 = menu5.Append(-1, "Go to timeline 3\tCtrl+3")
+			m_goto_tl4 = menu5.Append(-1, "Go to timeline 4\tCtrl+4")
+			m_goto_tl5 = menu5.Append(-1, "Go to timeline 5\tCtrl+5")
+			m_goto_tl6 = menu5.Append(-1, "Go to timeline 6\tCtrl+6")
+			m_goto_tl7 = menu5.Append(-1, "Go to timeline 7\tCtrl+7")
+			m_goto_tl8 = menu5.Append(-1, "Go to timeline 8\tCtrl+8")
+			m_goto_tl9 = menu5.Append(-1, "Go to timeline 9\tCtrl+9")
+			m_goto_tl0 = menu5.Append(-1, "Go to timeline 10\tCtrl+0")
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline1, m_goto_tl1)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline2, m_goto_tl2)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline3, m_goto_tl3)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline4, m_goto_tl4)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline5, m_goto_tl5)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline6, m_goto_tl6)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline7, m_goto_tl7)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline8, m_goto_tl8)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline9, m_goto_tl9)
+		self.Bind(wx.EVT_MENU, self.OnGotoTimeline0, m_goto_tl0)
 		# Store menu item references for accelerator table on macOS
 		self._m_volup = m_volup
 		self._m_voldown = m_voldown
@@ -222,6 +256,16 @@ class MainGui(wx.Frame):
 		self._m_speak_reply = m_speak_reply
 		self._m_accounts = m_accounts
 		self._m_copy = m_copy
+		self._m_goto_tl1 = m_goto_tl1
+		self._m_goto_tl2 = m_goto_tl2
+		self._m_goto_tl3 = m_goto_tl3
+		self._m_goto_tl4 = m_goto_tl4
+		self._m_goto_tl5 = m_goto_tl5
+		self._m_goto_tl6 = m_goto_tl6
+		self._m_goto_tl7 = m_goto_tl7
+		self._m_goto_tl8 = m_goto_tl8
+		self._m_goto_tl9 = m_goto_tl9
+		self._m_goto_tl0 = m_goto_tl0
 		self.menuBar.Append(menu5, "Navigation")
 		menu6 = wx.Menu()
 		m_readme = menu6.Append(-1, "Readme\tF1", "readme")
@@ -272,6 +316,17 @@ class MainGui(wx.Frame):
 				(wx.ACCEL_CTRL, ord('A'), self._m_accounts.GetId()),
 				# Ctrl+C for Copy post (conflicts with system Copy on Mac)
 				(wx.ACCEL_CTRL, ord('C'), self._m_copy.GetId()),
+				# Cmd + number for timeline jump
+				(wx.ACCEL_CMD, ord('1'), self._m_goto_tl1.GetId()),
+				(wx.ACCEL_CMD, ord('2'), self._m_goto_tl2.GetId()),
+				(wx.ACCEL_CMD, ord('3'), self._m_goto_tl3.GetId()),
+				(wx.ACCEL_CMD, ord('4'), self._m_goto_tl4.GetId()),
+				(wx.ACCEL_CMD, ord('5'), self._m_goto_tl5.GetId()),
+				(wx.ACCEL_CMD, ord('6'), self._m_goto_tl6.GetId()),
+				(wx.ACCEL_CMD, ord('7'), self._m_goto_tl7.GetId()),
+				(wx.ACCEL_CMD, ord('8'), self._m_goto_tl8.GetId()),
+				(wx.ACCEL_CMD, ord('9'), self._m_goto_tl9.GetId()),
+				(wx.ACCEL_CMD, ord('0'), self._m_goto_tl0.GetId()),
 			])
 			self.SetAcceleratorTable(accel)
 
@@ -677,6 +732,36 @@ class MainGui(wx.Frame):
 
 	def OnPrevTimeline(self,event=None):
 		invisible.inv.prev_tl(True)
+
+	def OnGotoTimeline1(self, event=None):
+		invisible.inv.goto_tl(0, True)
+
+	def OnGotoTimeline2(self, event=None):
+		invisible.inv.goto_tl(1, True)
+
+	def OnGotoTimeline3(self, event=None):
+		invisible.inv.goto_tl(2, True)
+
+	def OnGotoTimeline4(self, event=None):
+		invisible.inv.goto_tl(3, True)
+
+	def OnGotoTimeline5(self, event=None):
+		invisible.inv.goto_tl(4, True)
+
+	def OnGotoTimeline6(self, event=None):
+		invisible.inv.goto_tl(5, True)
+
+	def OnGotoTimeline7(self, event=None):
+		invisible.inv.goto_tl(6, True)
+
+	def OnGotoTimeline8(self, event=None):
+		invisible.inv.goto_tl(7, True)
+
+	def OnGotoTimeline9(self, event=None):
+		invisible.inv.goto_tl(8, True)
+
+	def OnGotoTimeline0(self, event=None):
+		invisible.inv.goto_tl(9, True)
 
 	def _get_account_display_name(self, account):
 		"""Get display name for an account, including instance for Mastodon."""

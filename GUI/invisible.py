@@ -132,6 +132,15 @@ class invisible_interface(object):
 			get_app().currentAccount.currentIndex=0
 		self.focus_tl(sync)
 
+	def goto_tl(self, index, sync=False):
+		"""Go to a specific timeline by index (0-based)."""
+		timelines = get_app().currentAccount.list_timelines()
+		if index < 0 or index >= len(timelines):
+			sound.play(get_app().currentAccount, "boundary")
+			return
+		get_app().currentAccount.currentIndex = index
+		self.focus_tl(sync)
+
 	def prev_account(self):
 		main.window.OnPrevAccount()
 
