@@ -441,10 +441,21 @@ def bluesky_post_to_universal(post, author=None, platform_data=None) -> Optional
     if embed:
         embed_type = get_attr(embed, '$type', '') or get_attr(embed, 'py_type', '')
         if 'record' in str(embed_type).lower():
+            # For recordWithMedia, the record is nested inside embed.record
             quoted_record = get_attr(embed, 'record', None)
             if quoted_record:
+                # The author might be directly on the record, or nested in a 'record' field
+                # for recordWithMedia views
                 quoted_author = get_attr(quoted_record, 'author', None)
-                quote = bluesky_post_to_universal(quoted_record, quoted_author)
+                # For app.bsky.embed.record#viewRecord the value field contains the actual record
+                actual_record = get_attr(quoted_record, 'value', None) or quoted_record
+                if quoted_author:
+                    quote = bluesky_post_to_universal(quoted_record, quoted_author)
+                elif actual_record != quoted_record:
+                    # Try to get author from nested structure
+                    nested_author = get_attr(actual_record, 'author', None)
+                    if nested_author:
+                        quote = bluesky_post_to_universal(actual_record, nested_author)
 
     # Get mentions and links from facets in record
     mentions = []

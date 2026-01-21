@@ -815,6 +815,9 @@ class Application:
 								# Strip HTML from bio/note field
 								obj = self.strip_html(str(obj))
 							template = template.replace("$" + t[1] + "$", str(obj))
+						else:
+							# Value is None - replace with empty string to avoid showing raw template
+							template = template.replace("$" + t[1] + "$", "")
 					except Exception as e:
 						pass  # Leave placeholder if we can't resolve it
 				else:
