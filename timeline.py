@@ -393,6 +393,11 @@ class timeline(object):
 			if not items:
 				return False
 
+			# Check if filter is active
+			filter_active = hasattr(self, '_filter_settings') and self._filter_settings
+			if filter_active:
+				from GUI.timeline_filter import should_show_status
+
 			# Load items into timeline
 			for item in items:
 				if item is None:
@@ -400,7 +405,13 @@ class timeline(object):
 				# Track ID for O(1) duplicate checking
 				if hasattr(item, 'id'):
 					self._status_ids.add(str(item.id))
-				self.statuses.append(item)
+				# If filter is active, add to unfiltered list and only add to visible if it passes filter
+				if filter_active:
+					self._unfiltered_statuses.append(item)
+					if should_show_status(item, self._filter_settings, self.app, account=self.account):
+						self.statuses.append(item)
+				else:
+					self.statuses.append(item)
 
 			# Set up since_id for next refresh and track for gap detection
 			if metadata.get('since_id') and items:
@@ -492,8 +503,12 @@ class timeline(object):
 		if not cache:
 			return
 
+		# Use unfiltered statuses if filter is active, otherwise use visible statuses
+		# This ensures filtered-out items are still cached for when filter is changed/removed
+		source_statuses = getattr(self, '_unfiltered_statuses', None) or self.statuses
+
 		# Don't cache if no items
-		if not self.statuses:
+		if not source_statuses:
 			return
 
 		try:
@@ -504,11 +519,11 @@ class timeline(object):
 			# When reversed=False: newest at start, so take [:limit]
 			# When reversed=True: newest at end, so take [-limit:]
 			if self.app.prefs.reversed:
-				items_to_cache = self.statuses[-cache_limit:] if len(self.statuses) > cache_limit else self.statuses[:]
+				items_to_cache = source_statuses[-cache_limit:] if len(source_statuses) > cache_limit else source_statuses[:]
 			else:
-				items_to_cache = self.statuses[:cache_limit]
+				items_to_cache = source_statuses[:cache_limit]
 
-			# Get the ID at current position for robust restore
+			# Get the ID at current position for robust restore (use visible statuses for position)
 			position_id = None
 			if self.index >= 0 and self.index < len(self.statuses):
 				position_id = str(self.statuses[self.index].id)
