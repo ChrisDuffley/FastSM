@@ -966,21 +966,28 @@ class MainGui(wx.Frame):
 			is_blocking = False
 			try:
 				# Get first participant that isn't us
+				conv_user = None
 				if hasattr(item, 'accounts') and item.accounts:
 					for acc in item.accounts:
 						if str(acc.id) != str(get_app().currentAccount.me.id):
-							user_id = acc.id
+							conv_user = acc
 							break
-					else:
-						user_id = None
-					if user_id:
+					if conv_user:
 						account = get_app().currentAccount
-						relationships = account.api.account_relationships([user_id])
-						if relationships and len(relationships) > 0:
-							rel = relationships[0]
-							is_following = getattr(rel, 'following', False)
-							is_muting = getattr(rel, 'muting', False)
-							is_blocking = getattr(rel, 'blocking', False)
+						platform_type = getattr(account.prefs, 'platform_type', 'mastodon')
+						if platform_type == 'mastodon' and hasattr(account, 'api') and hasattr(account.api, 'account_relationships'):
+							relationships = account.api.account_relationships([conv_user.id])
+							if relationships and len(relationships) > 0:
+								rel = relationships[0]
+								is_following = getattr(rel, 'following', False)
+								is_muting = getattr(rel, 'muting', False)
+								is_blocking = getattr(rel, 'blocking', False)
+						elif platform_type == 'bluesky':
+							viewer = getattr(conv_user, 'viewer', None)
+							if viewer:
+								is_following = bool(getattr(viewer, 'following', None))
+								is_muting = bool(getattr(viewer, 'muted', False))
+								is_blocking = bool(getattr(viewer, 'blocking', None))
 			except:
 				pass
 
@@ -1170,16 +1177,25 @@ class MainGui(wx.Frame):
 				is_blocking = False
 				is_showing_reblogs = True
 				try:
-					user_id = item.account.id if hasattr(item, 'account') else (notif_status.account.id if notif_status else None)
-					if user_id:
+					notif_user = item.account if hasattr(item, 'account') else (notif_status.account if notif_status else None)
+					if notif_user:
 						account = get_app().currentAccount
-						relationships = account.api.account_relationships([user_id])
-						if relationships and len(relationships) > 0:
-							rel = relationships[0]
-							is_following = getattr(rel, 'following', False)
-							is_muting = getattr(rel, 'muting', False)
-							is_blocking = getattr(rel, 'blocking', False)
-							is_showing_reblogs = getattr(rel, 'showing_reblogs', True)
+						if platform_type == 'mastodon' and hasattr(account, 'api') and hasattr(account.api, 'account_relationships'):
+							relationships = account.api.account_relationships([notif_user.id])
+							if relationships and len(relationships) > 0:
+								rel = relationships[0]
+								is_following = getattr(rel, 'following', False)
+								is_muting = getattr(rel, 'muting', False)
+								is_blocking = getattr(rel, 'blocking', False)
+								is_showing_reblogs = getattr(rel, 'showing_reblogs', True)
+						elif platform_type == 'bluesky':
+							# For Bluesky, check viewer info on the user object
+							viewer = getattr(notif_user, 'viewer', None)
+							if viewer:
+								# viewer.following is a URI string if following, None/empty if not
+								is_following = bool(getattr(viewer, 'following', None))
+								is_muting = bool(getattr(viewer, 'muted', False))
+								is_blocking = bool(getattr(viewer, 'blocking', None))
 				except:
 					pass
 
@@ -1297,15 +1313,23 @@ class MainGui(wx.Frame):
 			is_blocking = False
 			is_showing_reblogs = True
 			try:
-				user_id = status_to_check.account.id
+				post_user = status_to_check.account
 				account = get_app().currentAccount
-				relationships = account.api.account_relationships([user_id])
-				if relationships and len(relationships) > 0:
-					rel = relationships[0]
-					is_following = getattr(rel, 'following', False)
-					is_muting = getattr(rel, 'muting', False)
-					is_blocking = getattr(rel, 'blocking', False)
-					is_showing_reblogs = getattr(rel, 'showing_reblogs', True)
+				if platform_type == 'mastodon' and hasattr(account, 'api') and hasattr(account.api, 'account_relationships'):
+					relationships = account.api.account_relationships([post_user.id])
+					if relationships and len(relationships) > 0:
+						rel = relationships[0]
+						is_following = getattr(rel, 'following', False)
+						is_muting = getattr(rel, 'muting', False)
+						is_blocking = getattr(rel, 'blocking', False)
+						is_showing_reblogs = getattr(rel, 'showing_reblogs', True)
+				elif platform_type == 'bluesky':
+					# For Bluesky, check viewer info on the user object
+					viewer = getattr(post_user, 'viewer', None)
+					if viewer:
+						is_following = bool(getattr(viewer, 'following', None))
+						is_muting = bool(getattr(viewer, 'muted', False))
+						is_blocking = bool(getattr(viewer, 'blocking', None))
 			except:
 				pass
 
@@ -1910,6 +1934,9 @@ class MainGui(wx.Frame):
 						return
 					dlg.Destroy()
 				account.unfollow(user.id)
+				# Update user's viewer info to reflect new state
+				if hasattr(user, 'viewer') and user.viewer:
+					user.viewer.following = None
 				sound.play(account, "unfollow")
 				speak.speak(f"Unfollowed {user.acct}")
 			else:
@@ -1921,6 +1948,9 @@ class MainGui(wx.Frame):
 						return
 					dlg.Destroy()
 				account.follow(user.id)
+				# Update user's viewer info to reflect new state
+				if hasattr(user, 'viewer') and user.viewer:
+					user.viewer.following = True  # Set truthy value
 				sound.play(account, "follow")
 				speak.speak(f"Followed {user.acct}")
 		except Exception as error:
