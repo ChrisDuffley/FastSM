@@ -41,6 +41,8 @@ class timeline(object):
 		# Timeline position sync (for home timeline with Mastodon)
 		self._position_moved = False  # Track if user navigated since last load
 		self._last_synced_id = None  # Last position synced with server
+		# Set of status IDs for O(1) duplicate checking
+		self._status_ids = set()
 
 		for i in self.app.timeline_settings:
 			if i.account_id == self.account.me.id and i.tl == self.name:
@@ -290,8 +292,15 @@ class timeline(object):
 			self.statuses.insert(0, status)
 		else:
 			self.statuses.append(status)
+		# Track ID for O(1) duplicate checking
+		if hasattr(status, 'id'):
+			self._status_ids.add(str(status.id))
 		self.invalidate_display_cache()
 		return True
+
+	def has_status(self, status_id):
+		"""Check if a status ID is already in this timeline (O(1) lookup)."""
+		return str(status_id) in self._status_ids
 
 	def load_conversation(self):
 		status = self.status
@@ -315,9 +324,15 @@ class timeline(object):
 				# Build thread: ancestors -> current status -> descendants
 				for ancestor in ancestors:
 					self.statuses.append(ancestor)
+					if hasattr(ancestor, 'id'):
+						self._status_ids.add(str(ancestor.id))
 				self.statuses.append(actual_status)
+				if hasattr(actual_status, 'id'):
+					self._status_ids.add(str(actual_status.id))
 				for descendant in descendants:
 					self.statuses.append(descendant)
+					if hasattr(descendant, 'id'):
+						self._status_ids.add(str(descendant.id))
 				self.invalidate_display_cache()
 			except Exception:
 				# Fall back to recursive method
@@ -398,6 +413,8 @@ class timeline(object):
 
 	def process_status(self, status):
 		self.statuses.append(status)
+		if hasattr(status, 'id'):
+			self._status_ids.add(str(status.id))
 		try:
 			if hasattr(status, "in_reply_to_id") and status.in_reply_to_id is not None:
 				# Check if this is a remote status
@@ -662,11 +679,8 @@ class timeline(object):
 				else:
 					self.account.user_cache.add_users_from_status(i)
 
-				# Check for duplicates in both visible and unfiltered statuses
-				all_statuses = self.statuses
-				if hasattr(self, '_unfiltered_statuses'):
-					all_statuses = self._unfiltered_statuses
-				if not self.app.isDuplicate(i, all_statuses):
+				# Check for duplicates using O(1) set lookup
+				if not self.has_status(i.id):
 					newitems += 1
 					# Use filter-aware method to add status
 					to_front = self.app.prefs.reversed if (self.initial or back) else not self.app.prefs.reversed
