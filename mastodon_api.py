@@ -212,20 +212,20 @@ class mastodon(object):
 		if is_new_signin:
 			self._prompt_follow_fastsm()
 
-		# Get instance info for character limit (use cached if available)
-		cached_max_chars = self.prefs.get("cached_max_chars", 0)
-		if cached_max_chars > 0:
-			self.max_chars = cached_max_chars
-		else:
-			try:
-				instance_info = self.api.instance()
-				if hasattr(instance_info, 'configuration') and hasattr(instance_info.configuration, 'statuses'):
-					self.max_chars = instance_info.configuration.statuses.max_characters
-				else:
-					self.max_chars = 500
-				# Cache it for next time
-				self.prefs.cached_max_chars = self.max_chars
-			except:
+		# Get instance info for character limit (always fetch, fall back to cache)
+		try:
+			instance_info = self.api.instance()
+			if hasattr(instance_info, 'configuration') and hasattr(instance_info.configuration, 'statuses'):
+				self.max_chars = instance_info.configuration.statuses.max_characters
+			else:
+				self.max_chars = 500
+			# Update cache
+			self.prefs.cached_max_chars = self.max_chars
+		except:
+			cached_max_chars = self.prefs.get("cached_max_chars", 0)
+			if cached_max_chars > 0:
+				self.max_chars = cached_max_chars
+			else:
 				self.max_chars = 500
 		# Get default visibility from user info (already fetched)
 		self.default_visibility = getattr(self.me, 'source', {}).get('privacy', 'public')
