@@ -67,4 +67,8 @@ vlc/
 # yt-dlp executable (download from https://github.com/yt-dlp/yt-dlp/releases)
 yt-dlp.exe
 
+# Linux packages (built locally or in CI)
+*.deb
+*.rpm
+
 todo.txt

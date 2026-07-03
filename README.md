@@ -26,6 +26,8 @@ Prebuilt binaries for every commit to `master` are published at the [latest rele
 - **Windows Portable**: `FastSM-Windows-Portable.zip`
 - **macOS**: `FastSM-<version>.dmg`
 - **Linux Portable**: `FastSM-Linux-Portable.tar.gz`
+- **Linux (.deb)**: `FastSM_<version>_amd64.deb` (Debian/Ubuntu)
+- **Linux (.rpm)**: `FastSM-<version>-1.x86_64.rpm` (Fedora/RHEL)
 
 ## Running from source
 
@@ -82,6 +84,38 @@ Produces a signed `.app` inside a DMG. Uses ad-hoc signing (`-`) if no Developer
 ### Linux
 
 Produces a `.tar.gz` of a PyInstaller onedir bundle. The build script post-processes the bundle to remove libraries that must come from the user's system (GLib family, libasound, libpulse, util-linux, etc.) — bundling these causes ABI mismatches on distros newer than the build runner.
+
+### Linux packages
+
+PyInstaller builds can also be wrapped into native `.deb` and `.rpm` packages for easier installation:
+
+```bash
+# Build the PyInstaller bundle first, then package it
+python build.py
+python build.py --package
+
+# The packages appear in the current directory:
+#   FastSM_<version>_amd64.deb
+#   FastSM-<version>-1.x86_64.rpm
+```
+
+On Debian/Ubuntu, install the `.deb` with:
+
+```bash
+sudo dpkg -i FastSM_<version>_amd64.deb
+# Install any missing dependencies:
+sudo apt-get install -f
+```
+
+On Fedora/RHEL, install the `.rpm` with:
+
+```bash
+sudo dnf install FastSM-<version>-1.x86_64.rpm
+```
+
+The packages install FastSM to `/opt/FastSM/` and register a desktop entry. Run `fastsm` from a terminal or launch from the application menu.
+
+Requires [fpm](https://github.com/jordansissel/fpm) (`gem install fpm` or `apt-get install ruby-fpm`).
 
 ### Continuous integration
 
