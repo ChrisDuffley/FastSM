@@ -259,18 +259,46 @@ jobs:
           FASTSM_BUNDLE_LIBSSL_DIR: ${{ github.workspace }}
         run: python build.py
 
-      - name: Find build artifact
+      - name: Install fpm for native packaging
+        run: |
+          sudo gem install fpm
+
+      - name: Build native packages (.deb, .rpm)
+        run: |
+          DIST_DIR="$HOME/app_dist/FastSM/dist/FastSM"
+          VERSION=$(python -c "from version import APP_VERSION; print(APP_VERSION)")
+          bash packaging/linux/build_packages.sh "$DIST_DIR" "$VERSION"
+
+      - name: Find build artifacts
         id: artifact
         run: |
           TAR=$(ls FastSM-Linux-Portable.tar.gz 2>/dev/null | head -1)
           echo "path=$TAR" >> $GITHUB_OUTPUT
           echo "name=$TAR" >> $GITHUB_OUTPUT
+          DEB=$(ls FastSM_*.deb 2>/dev/null | head -1)
+          echo "deb_path=$DEB" >> $GITHUB_OUTPUT
+          echo "deb_name=$DEB" >> $GITHUB_OUTPUT
+          RPM=$(ls FastSM-*.rpm 2>/dev/null | head -1)
+          echo "rpm_path=$RPM" >> $GITHUB_OUTPUT
+          echo "rpm_name=$RPM" >> $GITHUB_OUTPUT
 
-      - name: Upload Linux artifact
+      - name: Upload Linux tarball artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
           path: ${{ steps.artifact.outputs.path }}
+
+      - name: Upload Linux .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: ${{ steps.artifact.outputs.deb_path }}
+
+      - name: Upload Linux .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm
+          path: ${{ steps.artifact.outputs.rpm_path }}
 
   release:
     # Skip on push so we don't churn the latest release on every commit.
@@ -343,6 +371,18 @@ jobs:
           name: linux-build
           path: artifacts/
 
+      - name: Download Linux .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: artifacts/
+
+      - name: Download Linux .rpm artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-rpm
+          path: artifacts/
+
       - name: List artifacts
         run: ls -la artifacts/
 
@@ -370,6 +410,8 @@ jobs:
             - **Windows Portable:** FastSM-Windows-Portable.zip
             - **macOS:** FastSM-${{ steps.version.outputs.version }}.dmg
             - **Linux Portable:** FastSM-Linux-Portable.tar.gz
+            - **Linux (.deb):** FastSM_${{ steps.version.outputs.version }}_amd64.deb
+            - **Linux (.rpm):** FastSM-${{ steps.version.outputs.version }}-1.x86_64.rpm
           files: artifacts/*
           prerelease: true
           make_latest: false

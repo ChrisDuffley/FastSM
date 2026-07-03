@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: FastSM
+Upstream-Contact: Mew
+Source: https://github.com/masonasons/FastSM
+
+Files: *
+Copyright: 2026 Mew
+License: All Rights Reserved

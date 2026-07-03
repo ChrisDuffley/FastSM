@@ -752,9 +752,63 @@ def create_macos_dmg(output_dir: Path, app_path: Path, script_dir: Path) -> Path
     return dmg_path
 
 
+def build_linux_packages(script_dir: Path, app_dir: Path):
+    """Build .deb and .rpm packages from the Linux PyInstaller output.
+
+    Uses packaging/linux/build_packages.sh which requires fpm.
+    If fpm is not installed, prints a warning and skips packaging.
+
+    Returns:
+        List of package paths created, or empty list.
+    """
+    print("Building native Linux packages (.deb, .rpm)...")
+
+    packaging_script = script_dir / "packaging" / "linux" / "build_packages.sh"
+    if not packaging_script.exists():
+        print("Warning: packaging script not found, skipping native packages")
+        return []
+
+    version = APP_VERSION
+
+    try:
+        result = subprocess.run(
+            ["bash", str(packaging_script), str(app_dir), str(version), str(script_dir)],
+            capture_output=True, text=True, cwd=script_dir
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            print(f"Warning: packaging failed:\n{result.stderr}")
+            return []
+
+        packages = list(script_dir.glob("*.deb")) + list(script_dir.glob("*.rpm"))
+        for pkg in packages:
+            print(f"  Package created: {pkg.name}")
+        return packages
+
+    except FileNotFoundError:
+        print("Warning: bash not found, skipping native packages")
+        return []
+
+
+def parse_args():
+    """Parse command-line arguments."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=f"Build {APP_NAME} v{APP_VERSION} using PyInstaller"
+    )
+    parser.add_argument(
+        "--package", action="store_true",
+        help="Also build native packages (.deb, .rpm) on Linux"
+    )
+    return parser.parse_args()
+
+
 def main():
     """Build FastSM executable using PyInstaller."""
     script_dir = Path(__file__).parent.resolve()
+
+    args = parse_args()
 
     platform = get_platform()
     print(f"Detected platform: {platform}")
@@ -786,6 +840,15 @@ def main():
             print(f"Copying to source folder: {dest_path}")
             shutil.copy2(artifact_path, dest_path)
             print(f"Artifact: {dest_path}")
+
+        # Build native packages on Linux if requested
+        if platform == "linux" and args.package:
+            # app_dir is the PyInstaller output directory
+            app_dir = output_dir / "dist" / APP_NAME
+            if app_dir.exists():
+                build_linux_packages(script_dir, app_dir)
+            else:
+                print(f"Warning: app directory not found for packaging: {app_dir}")
 
         print("=" * 50)
     else:

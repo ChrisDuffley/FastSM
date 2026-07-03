@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=FastSM
+Comment=A fast, accessible social media client for Mastodon and Bluesky
+Exec=fastsm
+Icon=fastsm
+Terminal=false
+Categories=Network;Chat;Accessibility;
+StartupNotify=true
+Keywords=mastodon;bluesky;social;accessibility;
