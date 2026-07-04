@@ -29,6 +29,11 @@ APP_MAINTAINER="Mew"
 APP_LICENSE="All Rights Reserved"
 APP_ARCH="amd64"
 
+# Where the binary ends up inside the package
+APP_DIR="/opt/$APP_NAME"
+APP_BIN="$APP_DIR/$APP_NAME"
+LAUNCHER="/usr/local/bin/$APP_NAME"
+
 # Dependencies that the PyInstaller bundle needs at runtime on the host system
 DEB_DEPENDS=(
     "libgtk-3-0"
@@ -71,7 +76,53 @@ echo "Dist dir:  $DIST_DIR"
 echo "Output:    $OUTPUT_DIR"
 echo
 
-# --- Build Debian package ---
+# --- Build staging directory ---
+STAGING=$(mktemp -d)
+trap 'rm -rf "$STAGING"' EXIT
+
+STAGING_APP="$STAGING$APP_DIR"
+STAGING_LAUNCHER="$STAGING$LAUNCHER"
+STAGING_DESKTOP="$STAGING/usr/share/applications"
+STAGING_DOC="$STAGING/usr/share/doc/$APP_NAME"
+
+mkdir -p "$STAGING_APP" "$STAGING_DESKTOP" "$STAGING_DOC"
+
+echo "Creating staging directory layout..."
+
+# Detect executable inside the dist directory (handles both
+# flattened and nested PyInstaller output).
+if [ -f "$DIST_DIR/$APP_NAME" ]; then
+    # Flat layout: $DIST_DIR contains the binary + _internal/
+    echo "  Detected flat layout in dist dir"
+    cp -r "$DIST_DIR"/* "$STAGING_APP/"
+elif [ -f "$DIST_DIR/$APP_NAME/$APP_NAME" ]; then
+    # Nested layout: $DIST_DIR contains $DIST_DIR/$APP_NAME/
+    echo "  Detected nested layout in dist dir"
+    cp -r "$DIST_DIR/$APP_NAME"/* "$STAGING_APP/"
+else
+    echo "Error: cannot find $APP_NAME binary in $DIST_DIR"
+    echo "Contents:"
+    ls -la "$DIST_DIR"
+    exit 1
+fi
+
+# Create launcher symlink
+mkdir -p "$(dirname "$STAGING_LAUNCHER")"
+ln -s "$APP_BIN" "$STAGING_LAUNCHER"
+
+# Copy desktop file
+cp "$PROJECT_DIR/packaging/linux/fastsm.desktop" "$STAGING_DESKTOP/"
+
+# Copy docs
+cp -r "$PROJECT_DIR/docs/"* "$STAGING_DOC/"
+
+# Copy copyright
+cp "$PROJECT_DIR/packaging/debian/copyright" "$STAGING_DOC/copyright"
+
+echo "Staging directory contents:"
+find "$STAGING" -type f -o -type l | head -20
+
+echo
 echo "--- Building .deb ---"
 fpm \
     --input-type dir \
@@ -92,15 +143,12 @@ fpm \
     --deb-priority optional \
     --deb-field "Section: net" \
     --verbose \
+    --after-install "$SCRIPT_DIR/postinst.sh" \
     $(for d in "${DEB_DEPENDS[@]}"; do echo --depends "$d"; done) \
-    "$DIST_DIR=/opt/$APP_NAME" \
-    "$PROJECT_DIR/packaging/linux/fastsm.desktop=/usr/share/applications/$APP_NAME.desktop" \
-    "$PROJECT_DIR/packaging/debian/copyright=/usr/share/doc/$APP_NAME/copyright" \
-    "$PROJECT_DIR/docs/=/usr/share/doc/$APP_NAME/"
+    "$STAGING/="
 
 echo
 
-# --- Build RPM package ---
 echo "--- Building .rpm ---"
 fpm \
     --input-type dir \
@@ -119,10 +167,9 @@ fpm \
     --rpm-user root \
     --rpm-group root \
     --verbose \
+    --after-install "$SCRIPT_DIR/postinst.sh" \
     $(for d in "${RPM_DEPENDS[@]}"; do echo --depends "$d"; done) \
-    "$DIST_DIR=/opt/$APP_NAME" \
-    "$PROJECT_DIR/packaging/linux/fastsm.desktop=/usr/share/applications/$APP_NAME.desktop" \
-    "$PROJECT_DIR/docs/=/usr/share/doc/$APP_NAME/"
+    "$STAGING/="
 
 echo
 echo "=========================================="
